@@ -1,0 +1,154 @@
+@page "/operators"
+@using Core.Models.Entities
+@inject Core.Services.CharacterService service
+
+
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-6">Arknights Operators</h2>
+
+    @if (list is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <div class="filter-container">
+            <input type="text" class="search-input" placeholder="Search by name..." @bind="searchTerm" @bind:event="oninput" />
+
+            <select class="filter-select" @bind="selectRarity">
+                <option value="">All Rarities</option>
+                <option value="TIER_6">6★</option>
+                <option value="TIER_5">5★</option>
+                <option value="TIER_4">4★</option>
+                <option value="TIER_3">3★</option>
+                <option value="TIER_2">2★</option>
+                <option value="TIER_1">1★</option>
+            </select>
+
+            <select class="filter-select" @bind="selectProfession">
+                <option value="">All Classes</option>
+                <option value="PIONEER">Vanguard</option>
+                <option value="WARRIOR">Guard</option>
+                <option value="TANK">Defender</option>
+                <option value="SNIPER">Sniper</option>
+                <option value="CASTER">Caster</option>
+                <option value="MEDIC">Medic</option>
+                <option value="SUPPORT">Supporter</option>
+                <option value="SPECIAL">Specialist</option>
+            </select>
+        </div>
+
+        <div class="operator-grid">
+            @foreach (var op in FilteredCharacters)
+            {
+                var imgId = !string.IsNullOrEmpty(op.Id) ? op.Id : list.FirstOrDefault(x => x.Name == op.Name)?.Id;
+
+                <div class="operator-card" data-rarity="@op.Rarity" @onclick="() => OpenModal(op)">
+                    <img class="operator-avatar"
+                         src="images/avatars/@(imgId?.ToLower() ?? "b_char_empty").png"
+                         onerror="this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/@(imgId?.ToLower()).png';" />
+
+                    <div class="operator-name text-truncate">@op.Name</div>
+                    <div class="rarity-@(op.Rarity) font-mono font-bold text-sm">@FormatRarity(op.Rarity)</div>
+                    <span class="class-badge @(op.Profession) mt-1">@op.Profession</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (isModalOpen && selectedCharacter != null)
+{
+    <div class="custom-modal" @onclick="CloseModal">
+        <div class="modal-content" @onclick:stopPropagation>
+            <div class="modal-left">
+                <img class="splash-art" src="@modalImageUrl" style="width: 100%; border-radius: var(--radius-md);" />
+
+                <div class="elite-toggle-container">
+                    <button class="elite-btn @(currentElite == "1" ? "active" : "")" @onclick='() => ChangeElite("1")'>E1</button>
+                    <button class="elite-btn @(currentElite == "2" ? "active" : "")" @onclick='() => ChangeElite("2")'>E2</button>
+                    @if (hasSpecialSkin)
+                    {
+                        <button class="elite-btn @(currentElite == "1+" ? "active" : "")" @onclick='() => ChangeElite("1+")'>Skin</button>
+                    }
+                </div>
+            </div>
+
+            <div class="modal-right">
+                <h2 class="text-xl font-bold">@selectedCharacter.Name</h2>
+                <div class="divider"></div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between"><span class="text-muted">Rarity</span> <span class="stat-value">@FormatRarity(selectedCharacter.Rarity)</span></div>
+                    <div class="flex justify-between"><span class="text-muted">Class</span> <span class="class-badge @(selectedCharacter.Profession)">@selectedCharacter.Profession</span></div>
+                    <div class="flex justify-between"><span class="text-muted">Position</span> <span class="stat-value">@selectedCharacter.Position</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Character>? list;
+    private string searchTerm = "";
+    private string selectRarity = "";
+    private string selectProfession = "";
+
+    private bool isModalOpen = false;
+    private Character? selectedCharacter;
+    private string modalImageUrl = "";
+    private string currentElite = "1";
+    private bool hasSpecialSkin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        list = await service.GetAllAsync();
+    }
+
+    private IEnumerable<Character> FilteredCharacters => list?
+        .Where(c => string.IsNullOrEmpty(searchTerm) || c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        .Where(c => string.IsNullOrEmpty(selectRarity) || c.Rarity == selectRarity)
+        .Where(c => string.IsNullOrEmpty(selectProfession) || c.Profession == selectProfession)
+        ?? Enumerable.Empty<Character>();
+
+    private void OpenModal(Character character)
+    {
+        selectedCharacter = character;
+        isModalOpen = true;
+        currentElite = "1";
+
+        var modalImgId = !string.IsNullOrEmpty(character.Id) ? character.Id : list?.FirstOrDefault(x => x.Name == character.Name)?.Id;
+        hasSpecialSkin = (modalImgId?.ToLower() == "char_002_amiya");
+
+        UpdateModalImage();
+    }
+
+    private void UpdateModalImage()
+    {
+        if (selectedCharacter == null) return;
+        var modalImgId = !string.IsNullOrEmpty(selectedCharacter.Id) ? selectedCharacter.Id : list?.FirstOrDefault(x => x.Name == selectedCharacter.Name)?.Id;
+        var cleanId = modalImgId?.ToLower();
+
+        if (currentElite == "1+")
+            modalImageUrl = $"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{cleanId}_1%2B.png";
+        else
+            modalImageUrl = $"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{cleanId}_{currentElite}.png";
+    }
+
+    private void ChangeElite(string eliteType)
+    {
+        currentElite = eliteType;
+        UpdateModalImage();
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+        selectedCharacter = null;
+    }
+
+    private string FormatRarity(string rarity)
+    {
+        return string.IsNullOrEmpty(rarity) ? "" : rarity.Replace("TIER_", "") + "★";
+    }
+}

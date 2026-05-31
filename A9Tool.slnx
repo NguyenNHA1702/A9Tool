@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="A9Tool/A9Tool.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="Core/Core.csproj" />
+  <Project Path="Infrastructure/Infrastructure.csproj" />
+</Solution>
