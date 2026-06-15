@@ -19,7 +19,7 @@ namespace Core.Services
         public async Task<List<Character>> GetAllAsync()
         {
             var charactersData = await _gameDataRepository.GetCharactersAsync();
-            
+
             if (charactersData == null)
             {
                 throw new Exception("Failed to retrieve character data.");
@@ -27,5 +27,25 @@ namespace Core.Services
 
             return charactersData.Values.ToList();
         }
+
+        public async Task<CharacterDetail?> GetByIdAsync(string id)
+        {
+            return await _gameDataRepository.GetCharacterDetailAsync(id);
+        }
+
+        public async Task<List<SkillDetail>> GetSkillsForOperatorAsync(CharacterDetail op)
+        {
+            var skillTable = await _gameDataRepository.GetSkillTableAsync();
+            if (skillTable == null) return new();
+
+            return op.Skills
+                .Where(s => s.SkillId != null && skillTable.ContainsKey(s.SkillId))
+                .Select(s => {
+                    var detail = skillTable[s.SkillId!];
+                    detail.SkillId = s.SkillId;
+                    return detail;
+                })
+                .ToList();
+        }
     }
-}   
+}

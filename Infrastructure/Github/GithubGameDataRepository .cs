@@ -2,9 +2,9 @@
 using Core.Models.Entities;
 using Infrastructure.Github.DTOs;
 using Microsoft.Extensions.Logging;
-using System.IO;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -47,8 +47,8 @@ namespace Infrastructure.Github
 
                 try
                 {
-                    // Gọi thẳng link gốc từ server GitHub công khai
-                    string url = $"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/{imgId}.png";
+                    // Đảm bảo imgId của bạn có định dạng giống như: "char_002_amiya"
+                    string url = $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{imgId}/{imgId}_1%2B.png";
 
                     byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
                     await File.WriteAllBytesAsync(fileFullPath, imageBytes);
@@ -108,6 +108,65 @@ namespace Infrastructure.Github
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching character data from GitHub");
+                throw;
+            }
+        }
+
+        public async Task<CharacterDetail?> GetCharacterDetailAsync(string id)
+        {
+            string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json"); // ← file riêng
+            var url = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/character_table.json";
+
+            try
+            {
+                Dictionary<string, CharacterDetail>? response;
+
+                if (File.Exists(localpath) && File.GetLastWriteTime(localpath) > DateTime.Now.AddDays(-1))
+                {
+                    var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
+                    response = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, CharacterDetail>>(json);
+                }
+                else
+                {
+                    response = await _httpClient.GetFromJsonAsync<Dictionary<string, CharacterDetail>>(url);
+                    var json = System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                    await File.WriteAllTextAsync(localpath, json, Encoding.UTF8); // ← lưu cache mới
+                }
+
+                if (response == null || !response.ContainsKey(id)) return null;
+
+                var raw = response[id];
+                raw.Id = id;
+                return raw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching character detail for {Id}", id);
+                throw;
+            }
+        }
+
+        public async Task<Dictionary<string, SkillDetail>?> GetSkillTableAsync()
+        {
+            string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
+            var url = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/skill_table.json";
+
+            try
+            {
+                if (File.Exists(localpath) && File.GetLastWriteTime(localpath) > DateTime.Now.AddDays(-1))
+                {
+                    var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
+                    return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, SkillDetail>>(json);
+                }
+
+                var response = await _httpClient.GetFromJsonAsync<Dictionary<string, SkillDetail>>(url);
+                var jsonOut = System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(localpath, jsonOut, Encoding.UTF8);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching skill table");
                 throw;
             }
         }

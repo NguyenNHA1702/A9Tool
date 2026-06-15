@@ -1,0 +1,274 @@
+@page "/operators/{Id}"
+@using Core.Models.Entities
+@inject Core.Services.CharacterService service
+@inject NavigationManager Nav
+@using Microsoft.Extensions.Logging;
+
+@if (op is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    var id = op.Id?.ToLower() ?? "";
+
+    <div class="max-w-[1400px] mx-auto p-6">
+        <button class="back-btn" @onclick='() => Nav.NavigateTo("/Operators")'>
+            ← Back
+        </button>
+
+        <div class="detail-layout">
+            <div class="detail-splash">
+                <div class="rarity-stripe rarity-stripe-@op.Rarity"></div>
+                <img @key="elite"
+                     src="@GetImageUrl(id)"
+                     alt="@op.Name"
+                     loading="lazy"
+                     style="cursor: zoom-in;"
+                     @onclick="() => showLightbox = true" />
+                <div class="elite-toggle-container" style="margin: .75rem;">
+                    <button class="elite-btn @(elite == 0 ? "active" : "")" @onclick="() => elite = 0">Avatar</button>
+                    <button class="elite-btn @(elite == 1 ? "active" : "")" @onclick="() => elite = 1">E1</button>
+                    <button class="elite-btn @(elite == 2 ? "active" : "")" @onclick="() => elite = 2">E2</button>
+                </div>
+            </div>
+
+            <div class="detail-info">
+
+                <!-- BASIC INFO -->
+                <div class="info-card">
+                    <div class="info-name">@op.Name</div>
+                    <div class="info-header-meta">
+                        <img src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId)_icon.png"
+                             style="width:24px; height:24px;"
+                             onerror="this.style.display='none'" />
+                        <span class="class-badge @op.Profession">@FormatProfession(op.Profession)</span>
+                    </div>
+                    <div class="info-subtitle">
+                        @op.DisplayNumber · @op.SubProfessionId · @op.Position
+                    </div>
+                    <p class="text-muted">@CleanDescription(op.Description)</p>
+                    <div class="tag-list">
+                        @foreach (var tag in op.Tags ?? [])
+                        {
+                            <span class="class-badge">@tag</span>
+                        }
+                    </div>
+                </div>
+
+                <!-- STATS -->
+                <div class="info-card">
+                    <div class="info-section-label">STATS</div>
+                    <div class="elite-toggle-container">
+                        <button class="elite-btn @(elite == 0 ? "active" : "")" @onclick="() => elite = 0">E0</button>
+                        <button class="elite-btn @(elite == 1 ? "active" : "")" @onclick="() => elite = 1">E1</button>
+                        <button class="elite-btn @(elite == 2 ? "active" : "")" @onclick="() => elite = 2">E2</button>
+                    </div>
+                    @{
+                        var stats = GetCurrentStats();
+                    }
+                    @if (stats != null)
+                    {
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_hp.png" style="width:20px;height:20px;" />
+                                <span>HP</span>
+                            </div>
+                            <span class="stat-value">@stats.MaxHp</span>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_atk.png" style="width:20px;height:20px;" />
+                                <span>ATK</span>
+                            </div>
+                            <span class="stat-value">@stats.Atk</span>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_def.png" style="width:20px;height:20px;" />
+                                <span>DEF</span>
+                            </div>
+                            <span class="stat-value">@stats.Def</span>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_res.png" style="width:20px;height:20px;" />
+                                <span>RES</span>
+                            </div>
+                            <span class="stat-value">@stats.MagicResistance%</span>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_cost.png" style="width:20px;height:20px;" />
+                                <span>COST</span>
+                            </div>
+                            <span class="stat-value">@stats.Cost</span>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_block.png" style="width:20px;height:20px;" />
+                                <span>BLOCK</span>
+                            </div>
+                            <span class="stat-value">@stats.BlockCnt</span>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">
+                                <img src="/assets/icons/charattrdetail/icon_time.png" style="width:20px;height:20px;" />
+                                <span>REDEPLOY</span>
+                            </div>
+                            <span class="stat-value">@stats.RespawnTime s</span>
+                        </div>
+                    }
+                </div>
+
+                <!-- TALENTS -->
+                <div class="info-card">
+                    <div class="info-section-label">TALENTS</div>
+                    @foreach (var talent in op.Talents)
+                    {
+                        var candidate = talent.Candidates?.FirstOrDefault(c => c.RequiredPotentialRank == 0);
+                        if (candidate != null)
+                        {
+                            <div class="talent-item">
+                                <div class="talent-name">@candidate.Name</div>
+                                <span class="text-muted">Unlock: @FormatPhase(candidate.UnlockCondition?.Phase)</span>
+                                <p class="text-muted">@CleanDescription(candidate.Description)</p>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- POTENTIAL -->
+                <div class="info-card">
+                    <div class="info-section-label">POTENTIAL</div>
+                    @for (int i = 0; i < op.PotentialRanks.Count; i++)
+                    {
+                        <div class="potential-row">
+                            <div class="potential-badge">@(i + 1)</div>
+                            <span>@op.PotentialRanks[i].Description</span>
+                        </div>
+                    }
+                </div>
+
+                <!-- TRUST BONUS -->
+                <div class="info-card">
+                    <div class="info-section-label">TRUST BONUS</div>
+                    @{
+                        var trust = op.TrustBonus.FirstOrDefault(x => x.Level == 50)?.Data;
+                    }
+                    @if (trust != null)
+                    {
+                        @if (trust.MaxHp != 0)
+                        {
+                            <div class="stat-row">
+                                <div class="stat-label">
+                                    <img src="/assets/icons/charattrdetail/icon_hp.png" style="width:20px;height:20px;" />
+                                    <span>Max HP</span>
+                                </div>
+                                <span class="stat-value">+@trust.MaxHp</span>
+                            </div>
+                        }
+                        @if (trust.Atk != 0)
+                        {
+                            <div class="stat-row">
+                                <div class="stat-label">
+                                    <img src="/assets/icons/charattrdetail/icon_atk.png" style="width:20px;height:20px;" />
+                                    <span>ATK</span>
+                                </div>
+                                <span class="stat-value">+@trust.Atk</span>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="info-card">
+                    <div class="info-section-label">SKILLS</div>
+                    <p>Count: @skills.Count</p>
+                    @foreach (var skill in skills)
+                    {
+                        <p>@skill.SkillId | @skill.IconId | levels: @skill.Levels?.Count</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (showLightbox)
+    {
+        <div class="lightbox" @onclick="() => showLightbox = false">
+            <img src="@GetImageUrl(id)" @onclick:stopPropagation />
+        </div>
+    }
+}
+
+@code {
+    [Inject] ILogger<OperatorDetail>? Logger { get; set; }
+
+    [Parameter] public string Id { get; set; } = "";
+
+    private CharacterDetail? op;
+
+    private List<SkillDetail> skills = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            op = await service.GetByIdAsync(Id);
+            Logger.LogInformation("Found operator: {OperatorName} with description: {OperatorDescription}", op?.Name, op?.Description);
+
+            if (op != null)
+                skills = await service.GetSkillsForOperatorAsync(op);
+            Logger.LogInformation("Fetched {SkillCount} skills for operator: {OperatorName}", skills.Count, op?.Name);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error fetching operator details for Id: {Id}", Id);
+        }
+    }
+    private int elite = 1;
+    private bool showLightbox = false;
+
+    private string GetImageUrl(string id) => elite switch
+    {
+        0 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_1.png",
+        1 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_1.png",
+        2 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_2.png",
+        _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_2.png"
+    };
+
+    private Stats? GetCurrentStats()
+    {
+        if (op?.Phases == null || op.Phases.Count == 0) return null;
+        var phase = op.Phases[Math.Min(elite, op.Phases.Count - 1)];
+        return phase.AttributesKeyFrames?.LastOrDefault()?.Data;
+    }
+
+    private string FormatRarity(string? r)
+        => string.IsNullOrEmpty(r) ? "" : r.Replace("TIER_", "") + "★";
+
+    private string FormatProfession(string? p) => p switch
+    {
+        "PIONEER" => "Vanguard",
+        "WARRIOR" => "Guard",
+        "TANK" => "Defender",
+        "SNIPER" => "Sniper",
+        "CASTER" => "Caster",
+        "MEDIC" => "Medic",
+        "SUPPORT" => "Supporter",
+        "SPECIAL" => "Specialist",
+        _ => p ?? ""
+    };
+
+    private string FormatPhase(string? phase) => phase switch
+    {
+        "PHASE_0" => "E0",
+        "PHASE_1" => "E1",
+        "PHASE_2" => "E2",
+        _ => phase ?? ""
+    };
+
+    private string CleanDescription(string? desc)
+        => string.IsNullOrEmpty(desc) ? "" : System.Text.RegularExpressions.Regex.Replace(desc, @"<[^>]+>", "");
+
+}

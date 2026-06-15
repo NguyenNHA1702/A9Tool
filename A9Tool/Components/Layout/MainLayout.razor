@@ -1,17 +1,49 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-mark">AK</div>
+            <span class="logo-text">A9Tool</span>
         </div>
 
-        <article class="content px-4">
+        <nav class="sidebar-nav">
+            <NavLink class="nav-item" href="/" Match="NavLinkMatch.All">
+                <span class="nav-icon">⌂</span> Home
+            </NavLink>
+
+            <div class="nav-section">Wiki</div>
+            <NavLink class="nav-item" href="/operators">
+                <span class="nav-icon">◈</span> Operators
+            </NavLink>
+            <NavLink class="nav-item" href="/skills">
+                <span class="nav-icon">◆</span> Skills
+            </NavLink>
+
+            <div class="nav-section">Tools</div>
+            <NavLink class="nav-item" href="/calculator">
+                <span class="nav-icon">⊞</span> Calculator
+            </NavLink>
+        </nav>
+
+        <div class="sidebar-footer">
+            <NavLink class="nav-item" href="/settings">
+                <span class="nav-icon">⚙</span> Settings
+            </NavLink>
+        </div>
+    </aside>
+
+    <div class="main-area">
+        <header class="app-header">
+            <div class="header-breadcrumb"></div>
+            <div class="header-spacer"></div>
+            <div class="header-actions">
+                <button class="btn-icon" title="Search">⌕</button>
+            </div>
+        </header>
+
+        <main class="page-content">
             @Body
-        </article>
-    </main>
+        </main>
+    </div>
 </div>
