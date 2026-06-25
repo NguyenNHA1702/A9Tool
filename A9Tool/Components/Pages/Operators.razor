@@ -12,7 +12,7 @@
     {
         <div class="flex items-baseline gap-3 mb-6">
             <h1 class="text-3xl font-bold">Arknights Operators</h1>
-            <span class="text-muted">@FilteredCharacters.Count() operators</span>
+            <span class="text-muted" @onclick="ResetCache">@FilteredCharacters.Count() operators</span>
         </div>
 
         <div class="filter-container">
@@ -53,8 +53,8 @@
                     <div class="op-card-rarity-bar rarity-bar-@(op.Rarity)"></div>
                     <img class="op-card-img"
                          @key="@($"img-{op.Id}")"
-                         src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/@(id).png"
-                         onerror="@($"this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{id}_1.png';this.onerror=function(){{this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/{id}.png';}};")"
+                         src="https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/charportraits/@(id)_1.png"
+                         onerror="@($"this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/@(id).png';this.onerror=function(){{this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/{id}.png';}};")"
                          alt="@op.Name"
                          loading="lazy" />
                     <div class="op-card-body">
@@ -106,4 +106,8 @@
         "SPECIAL" => "Specialist",
         _ => p
     };
+
+    private async Task ResetCache()
+       => await service.ResetCache();
+    
 }

@@ -170,5 +170,34 @@ namespace Infrastructure.Github
                 throw;
             }
         }
+
+        public async Task ResetCache()
+        {
+            string localpath1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table.json");
+            string localpath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json");
+            string localpath3 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
+
+            if (File.Exists(localpath1))
+            {
+                File.Delete(localpath1);
+
+                _logger.LogInformation("Fetching new character data");
+                await GetCharactersAsync();
+            }
+            if (File.Exists(localpath2))
+            {
+                File.Delete(localpath2);
+
+                _logger.LogInformation("Fetching new character detail data");
+                await GetCharactersAsync();
+            }
+            if (File.Exists(localpath3))
+            {
+                File.Delete(localpath3);
+
+                _logger.LogInformation("Fetching new character skill data");
+                await GetSkillTableAsync();
+            }
+        }
     }
 }

@@ -12,5 +12,6 @@ namespace Core.Interfaces
         Task DownloadAllAvatarAsync(List<Character> characters, string webRootPath);
         Task<CharacterDetail?> GetCharacterDetailAsync(string id);
         Task<Dictionary<string, SkillDetail>?> GetSkillTableAsync();
+        Task ResetCache();
     }
 }

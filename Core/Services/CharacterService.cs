@@ -47,5 +47,10 @@ namespace Core.Services
                 })
                 .ToList();
         }
+
+        public async Task ResetCache()
+        {
+            await _gameDataRepository.ResetCache();
+        }
     }
 }
