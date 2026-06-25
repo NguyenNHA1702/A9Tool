@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using Core.Github.DTOs.Response;
 
 namespace Core.Services
 {
@@ -38,14 +39,18 @@ namespace Core.Services
             var skillTable = await _gameDataRepository.GetSkillTableAsync();
             if (skillTable == null) return new();
 
-            return op.Skills
-                .Where(s => s.SkillId != null && skillTable.ContainsKey(s.SkillId))
-                .Select(s => {
-                    var detail = skillTable[s.SkillId!];
-                    detail.SkillId = s.SkillId;
-                    return detail;
-                })
-                .ToList();
+            return null;
+
+            //return op.Skills
+            //    .Where(s => s.SkillId != null && skillTable.ContainsKey(s.SkillId))
+            //    .Select(s => {
+            //        var detail = skillTable[s.SkillId!];
+            //        return new SkillsForOperatorResponse
+            //        {
+
+            //        };
+            //    })
+            //    .ToList();
         }
 
         public async Task ResetCache()
