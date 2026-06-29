@@ -49,11 +49,34 @@ namespace Infrastructure.Github
 
                 return response;
             }
+
+            catch (HttpRequestException httpe)
+            {
+                _logger.LogError("Error requesting Http");
+
+                if (File.Exists(localPath))
+                {
+                    Dictionary<string, T> response;
+
+                    _logger.LogInformation("Loading cache: {file}", Path.GetFileName(localPath));
+                    var json = await File.ReadAllTextAsync(localPath, Encoding.UTF8);
+                    response = JsonSerializer.Deserialize<Dictionary<string, T>>(json, opts);
+
+                    return response;
+                }
+
+                else
+                {
+                    _logger.LogError("No cache found");
+                    throw;
+                }
+            }
+
             catch (Exception e)
             {
                 _logger.LogError("Error getting {Type}", typeof(T).Name);
                 throw;
-            }
+            }      
         }
 
         public async Task DownloadAllAvatarAsync(List<Character> characters, string webRootPath)
