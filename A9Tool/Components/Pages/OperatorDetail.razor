@@ -1,4 +1,5 @@
 @page "/operators/{Id}"
+@using Core.Github.DTOs.Response
 @using Core.Models.Entities
 @inject Core.Services.CharacterService service
 @inject NavigationManager Nav
@@ -186,7 +187,7 @@ else
                     <p>Count: @skills.Count</p>
                     @foreach (var skill in skills)
                     {
-                        <p>@skill.SkillId | @skill.IconId | levels: @skill.Levels?.Count | @skill.</p>
+                        <p>Name: @skill.SkillName | Skill Description: @skill.SkillDescription</p>
                     }
                 </div>
             </div>
@@ -208,7 +209,7 @@ else
 
     private CharacterDetail? op;
 
-    private List<SkillDetail> skills = new();
+    private List<SkillsForOperatorResponse> skills = new();
 
     protected override async Task OnParametersSetAsync()
     {

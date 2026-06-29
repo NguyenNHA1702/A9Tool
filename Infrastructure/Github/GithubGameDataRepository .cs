@@ -1,12 +1,14 @@
-﻿using Core.Interfaces;
+﻿using Core.Github.DTOs;
+using Core.Github.DTOs.Response;
+using Core.Interfaces;
 using Core.Models.Entities;
-using Core.Github.DTOs;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace Infrastructure.Github
 {
@@ -25,6 +27,8 @@ namespace Infrastructure.Github
 
         private async Task<Dictionary<string, T>?> LoadTableAsync<T>(string localPath, string url)
         {
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
             try
             {
                 Dictionary<string, T> response;
@@ -32,15 +36,14 @@ namespace Infrastructure.Github
                 {
                     _logger.LogInformation("Loading cache: {file}", Path.GetFileName(localPath));
                     var json = await File.ReadAllTextAsync(localPath, Encoding.UTF8);
-                    response = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, T>>(json);
+                    response = JsonSerializer.Deserialize<Dictionary<string, T>>(json, opts);
                 }
-
                 else
                 {
                     _logger.LogInformation("Loading from git: {link}", url);
-                    response = await _httpClient.GetFromJsonAsync<Dictionary<string, T>>(url);
+                    response = await _httpClient.GetFromJsonAsync<Dictionary<string, T>>(url, opts);
 
-                    var json = System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                    var json = JsonSerializer.Serialize(response, opts);
                     await File.WriteAllTextAsync(localPath, json, Encoding.UTF8);
                 }
 
@@ -143,6 +146,16 @@ namespace Infrastructure.Github
             var response = await LoadTableAsync<SkillDetail>(localpath, url);
             return response;
         }
+
+        //public async Task<SkillsForOperatorResponse?> GetSkillByIdAsync(string id)
+        //{
+
+        //    string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
+        //    var url = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/skill_table.json";
+
+        //    var response = await LoadTableAsync<SkillsForOperatorResponse>(localpath, url);
+        //    return response[id];
+        //}
 
         public async Task ResetCache()
         {

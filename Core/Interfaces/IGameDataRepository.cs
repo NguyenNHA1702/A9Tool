@@ -1,4 +1,5 @@
-﻿using Core.Models.Entities;
+﻿using Core.Github.DTOs.Response;
+using Core.Models.Entities;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,6 +13,7 @@ namespace Core.Interfaces
         Task DownloadAllAvatarAsync(List<Character> characters, string webRootPath);
         Task<CharacterDetail?> GetCharacterDetailAsync(string id);
         Task<Dictionary<string, SkillDetail>?> GetSkillTableAsync();
+        //Task<SkillsForOperatorResponse?> GetSkillByIdAsync(string id);
         Task ResetCache();
     }
 }
