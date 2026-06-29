@@ -56,7 +56,7 @@ A9Tools/
 | Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
 | :---: | :---: | :--- | :---: | :---: | :---: |
 | [x] | A9-101 | **Tải và Parse dữ liệu `skill_table.json`:** Đã triển khai hàm `GetSkillTableAsync()` trong repo. | 2h | 🔥 Rất cao | `Done` |
-| [ ] | A9-102 | **Ánh xạ Skill vào Character Detail:** Viết logic trong `CharacterService` để lấy chi tiết kỹ năng dựa trên danh sách `skillId` của Operator. | 2h | 🔥 Rất cao | `ToDo` |
+| [x] | A9-102 | **Ánh xạ Skill vào Character Detail:** Viết logic trong `CharacterService` để lấy chi tiết kỹ năng dựa trên danh sách `skillId` của Operator. | 2h | 🔥 Rất cao | `ToDo` |
 | [ ] | A9-103 | **Giao diện hiển thị danh sách kỹ năng:** Hiển thị tên, icon, loại SP (Auto/Manual/Passive) và cơ chế sạc trong trang chi tiết. | 2h | 🔥 Rất cao | `ToDo` |
 | [ ] | A9-104 | **Slider/Dropdown tương tác cấp độ kỹ năng:** Thiết kế slider Level 1 -> Mastery 3 để cập nhật động mô tả kỹ năng và chỉ số SP. | 2h | 🔥 Rất cao | `ToDo` |
 
