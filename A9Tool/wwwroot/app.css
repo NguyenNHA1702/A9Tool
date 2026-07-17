@@ -1172,3 +1172,175 @@ html, body {
     font-weight: 700;
     flex-shrink: 0;
 }
+
+/* ── SP-type badge — dùng token mới, giống pattern class-badge ── */
+:root {
+    --sp-auto: #2e7d32; /* xanh lá — tự động sạc */
+    --sp-manual: #1565c0; /* xanh dương — sạc khi đánh */
+    --sp-passive: #6a1b9a; /* tím — bị động, không sạc thường */
+}
+
+.dark {
+    --sp-auto: #4caf50;
+    --sp-manual: #42a5f5;
+    --sp-passive: #ab47bc;
+}
+
+/* ── Skill tabs — tái dùng pattern elite-toggle-container ── */
+.skill-tabs {
+    display: flex;
+    gap: var(--space-2);
+    padding: 4px;
+    margin-bottom: var(--space-4);
+    background: var(--muted);
+    border-radius: var(--radius-xl);
+    overflow-x: auto;
+}
+
+.skill-tab {
+    flex: 1;
+    white-space: nowrap;
+    border: none;
+    cursor: pointer;
+    padding: 8px 14px;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: background .15s, color .15s;
+}
+
+    .skill-tab:hover {
+        color: var(--foreground);
+    }
+
+    .skill-tab.active {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-weight: 600;
+    }
+
+/* ── Skill card — tái dùng pattern info-card ── */
+.skill-card {
+    background: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+}
+
+    .skill-card + .skill-card {
+        margin-top: var(--space-3);
+    }
+
+.skill-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.skill-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    object-fit: contain;
+    background: var(--muted);
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+}
+
+.skill-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.skill-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: 4px;
+}
+
+.skill-name {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+/* ── SP-type badge — pill giống class-badge ── */
+.sp-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.5;
+    flex-shrink: 0;
+}
+
+    .sp-badge.sp-auto {
+        background: var(--sp-auto);
+    }
+
+    .sp-badge.sp-manual {
+        background: var(--sp-manual);
+    }
+
+    .sp-badge.sp-passive {
+        background: var(--sp-passive);
+    }
+
+/* ── SP meta row (SP cost / duration / initial sp) ── */
+.skill-sp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.sp-meta-item {
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+    .sp-meta-item .stat-value {
+        color: var(--foreground);
+    }
+
+/* ── Skill description ── */
+.skill-description {
+    font-size: var(--text-md);
+    color: var(--foreground);
+    line-height: 1.6;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+}
+
+/* ── Empty state (operator chưa có skill data) ── */
+.skill-empty {
+    padding: var(--space-5);
+    text-align: center;
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+    background: var(--muted);
+    border-radius: var(--radius-lg);
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+    .skill-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .skill-icon {
+        width: 40px;
+        height: 40px;
+    }
+}

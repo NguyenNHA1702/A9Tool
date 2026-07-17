@@ -1,4 +1,5 @@
-﻿using Core.Github.DTOs.Response;
+﻿using Core.DTOs.Response;
+using Core.Github.DTOs.Response;
 using Core.Interfaces;
 using Core.Models.Entities;
 using Microsoft.Extensions.Logging;
@@ -48,23 +49,53 @@ namespace Core.Services
             foreach (var skill in op.Skills)
             {
                 _logger.LogInformation("Skill ID from op: {SkillId}", skill.SkillId);
-                var returnSkill = skillTable[skill.SkillId];
 
-                var returnLevels = new List<SkillLevel>();
-                returnLevels = returnSkill.Levels;
+                if (!skillTable.TryGetValue(skill.SkillId, out var returnSkill))
+                {
+                    _logger.LogWarning("Skill {SkillId} not found in skill table", skill.SkillId);
+                    continue;
+                }
+
+                var returnLevels = returnSkill.Levels;
+
+                var skillLevelDtoList = new List<SkillLevelResponse>();
+
+                foreach(var skillLevel in returnSkill.Levels)
+                {
+                    var parsedDesc = ParseBlackboard(skillLevel.Description, skillLevel.Blackboard);
+                    var cleanDesc = CleanDescription(parsedDesc);
+
+                    var skillLevelDto = new SkillLevelResponse
+                    {
+                        Name = skillLevel.Name,
+                        Description = cleanDesc,
+                        SpCost = skillLevel.SpData?.SpCost ?? 0,
+                        InitSp = skillLevel.SpData?.InitSp ?? 0,
+                        Duration = skillLevel.Duration,
+                        RangeId = skillLevel.RangeId
+                    };
+
+                    skillLevelDtoList.Add(skillLevelDto);
+                }
 
                 var dto = new SkillsForOperatorResponse 
                 {
                     SkillId = returnSkill.SkillId,
-                    SkillName = returnLevels[count].Name,
-                    SkillDescription = CleanDescription(returnLevels[count].Description),
-                    SkillType = returnLevels[count].SkillType
+                    IconId = returnSkill.IconId,
+                    SkillType = returnLevels[count].SkillType,
+                    Levels = skillLevelDtoList
+
                 };
 
                 list.Add(dto);
             }
 
                 return list;
+        }
+
+        private string? ParseBlackboard(string description, List<SkillBlackboard> blackboard)
+        {
+            throw new NotImplementedException();
         }
 
         private static string? CleanDescription(string? description)
