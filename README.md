@@ -96,6 +96,7 @@ A9Tools/
 | [x] | A9-501 | **Background Downloader cho Avatar:** Đã có hàm tải avatar lưu offline trong Repo. | - | ⚡ Cao | `Done` |
 | [ ] | A9-502 | **Tải offline Icons (Skill & Module):** Viết thêm hàm tải các icon skill và module về lưu trữ local. | 3h | ⚡ Cao | `ToDo` |
 | [ ] | A9-503 | **Cơ chế fallback hình ảnh thông minh:** Ưu tiên đọc ảnh local, nếu không có mới gọi online và tự động lưu lại (lazy cache). | 1.5h | ⚡ Cao | `ToDo` |
+| [ ] | A9-504 | **Chuẩn hóa Error Handling cho GameDataRepository:** Áp dụng try-catch/TryGetValue nhất quán khi tra cứu dữ liệu (skill, item, module...), tránh crash khi thiếu key hoặc field null; log cảnh báo thay vì throw exception làm sập luồng hiển thị. | 2h | ⚡ Cao | `ToDo` |
 
 #### 📋 Epic 6: Tối ưu bộ nhớ & Tốc độ khởi động (Thời gian ước lượng: ~6h)
 
