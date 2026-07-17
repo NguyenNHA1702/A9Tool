@@ -59,6 +59,7 @@ A9Tools/
 | [x] | A9-102 | **Ánh xạ Skill vào Character Detail:** Viết logic trong `CharacterService` để lấy chi tiết kỹ năng dựa trên danh sách `skillId` của Operator. | 2h | 🔥 Rất cao | `ToDo` |
 | [ ] | A9-103 | **Giao diện hiển thị danh sách kỹ năng:** Hiển thị tên, icon, loại SP (Auto/Manual/Passive) và cơ chế sạc trong trang chi tiết. | 2h | 🔥 Rất cao | `ToDo` |
 | [ ] | A9-104 | **Slider/Dropdown tương tác cấp độ kỹ năng:** Thiết kế slider Level 1 -> Mastery 3 để cập nhật động mô tả kỹ năng và chỉ số SP. | 2h | 🔥 Rất cao | `ToDo` |
+| [ ] | A9-105 | **Tích hợp Range Table cho Operator & Skill:** Parse `range_table.json`, hiển thị lưới tầm đánh mặc định của Operator và tầm đánh riêng của Skill (nếu có `rangeId` khác null). | 2.5h | 🛠️ Trung bình | `ToDo` |
 
 #### 📋 Epic 2: Hiển thị Hệ thống Module (Thời gian ước lượng: ~6h)
 
@@ -95,6 +96,7 @@ A9Tools/
 | [x] | A9-501 | **Background Downloader cho Avatar:** Đã có hàm tải avatar lưu offline trong Repo. | - | ⚡ Cao | `Done` |
 | [ ] | A9-502 | **Tải offline Icons (Skill & Module):** Viết thêm hàm tải các icon skill và module về lưu trữ local. | 3h | ⚡ Cao | `ToDo` |
 | [ ] | A9-503 | **Cơ chế fallback hình ảnh thông minh:** Ưu tiên đọc ảnh local, nếu không có mới gọi online và tự động lưu lại (lazy cache). | 1.5h | ⚡ Cao | `ToDo` |
+| [ ] | A9-504 | **Chuẩn hóa Error Handling cho GameDataRepository:** Áp dụng try-catch/TryGetValue nhất quán khi tra cứu dữ liệu (skill, item, module...), tránh crash khi thiếu key hoặc field null; log cảnh báo thay vì throw exception làm sập luồng hiển thị. | 2h | ⚡ Cao | `ToDo` |
 
 #### 📋 Epic 6: Tối ưu bộ nhớ & Tốc độ khởi động (Thời gian ước lượng: ~6h)
 
