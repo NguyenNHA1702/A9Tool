@@ -150,7 +150,7 @@ namespace Infrastructure.Github
             string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json"); // ← file riêng
             var url = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/character_table.json";
 
-
+            
             var response = await LoadTableAsync<CharacterDetail>(localpath, url);
 
             if (response == null || !response.ContainsKey(id)) return null;

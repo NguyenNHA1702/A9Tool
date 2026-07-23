@@ -60,7 +60,7 @@ namespace Core.Services
 
                 var skillLevelDtoList = new List<SkillLevelResponse>();
 
-                foreach(var skillLevel in returnSkill.Levels)
+                foreach (var skillLevel in returnSkill.Levels)
                 {
                     var parsedDesc = ParseBlackboard(skillLevel.Description, skillLevel.Blackboard);
                     var cleanDesc = CleanDescription(parsedDesc);
@@ -78,9 +78,9 @@ namespace Core.Services
                     skillLevelDtoList.Add(skillLevelDto);
                 }
 
-                var dto = new SkillsForOperatorResponse 
+                var dto = new SkillsForOperatorResponse
                 {
-                    SkillId = returnSkill.SkillId,
+                    SkillId = skill.SkillId,
                     IconId = returnSkill.IconId,
                     SkillType = returnLevels[count].SkillType,
                     Levels = skillLevelDtoList
@@ -90,12 +90,30 @@ namespace Core.Services
                 list.Add(dto);
             }
 
-                return list;
+            return list;
         }
 
-        private string? ParseBlackboard(string description, List<SkillBlackboard> blackboard)
+        private string? ParseBlackboard(string? description, List<SkillBlackboard>? blackboard)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(description)) return description;
+
+            if (blackboard == null || blackboard.Count == 0) return description;
+
+            foreach (var bb in blackboard)
+            {
+                var value = bb.ValueStr ?? FormatValue((double)bb.Value);
+
+                description = description.Replace(bb.Key, value);
+            }
+
+            return description;
+        }
+
+        private string FormatValue(double value)
+        {
+            return value % 1 == 0
+                ? ((int)value).ToString()
+                : value.ToString("0.##");
         }
 
         private static string? CleanDescription(string? description)

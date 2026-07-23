@@ -183,7 +183,41 @@ else
                 </div>
 
                 <div class="skill-selection">
-                    <!-- Implement later -->
+                    <div class="skill-tabs">
+                        @for (int i = 0; i < op.Skills.Count; i++)
+                        {
+                            <button class="skill-tab @(i == selectedSkill ? "active" : "")" @onclick="() => selectedSkill = i">Skill @(i + 1)</button>
+                        }
+                    </div>
+
+                    <div class="skill-card">
+                        <div class="skill-card-header">
+                            @{
+                                //note: xóa curentSkill đi dùng operatorSkillResponse vì nó đang bị null skill 2 3 của các operator
+                                var currentSkill = (op.Skills != null && selectedSkill < op.Skills.Count) ? op.Skills[selectedSkill] : null;
+                                Logger.LogInformation("Load skill with ID: {id}", currentSkill?.SkillId);
+
+                                var operatorSkillResponse = (op.Skills != null && selectedSkill < op.Skills.Count) ? skills[selectedSkill] : null;
+                            }
+
+                            <img class="skill-icon" src="@GetSkillImageUrl(currentSkill?.SkillId)" />
+
+                            <div class="skill-header-info">
+                                <div class="skill-name-row">
+                                    <span class="skill-name">@operatorSkillResponse?.Levels[1].Name</span>
+                                    <span class="sp-badge sp-auto">@operatorSkillResponse?.SkillType</span>
+                                </div>
+
+                                <div class="skill-sp-meta">
+                                    <span class="sp-meta-item">SP: <span class="stat-value">@operatorSkillResponse?.Levels[1].SpCost</span></span>
+                                    <span class="sp-meta-item">Duration: <span class="stat-value">@operatorSkillResponse?.Levels[1].Duration</span></span>
+                                    <span class="sp-meta-item">Init SP: <span class="stat-value">@operatorSkillResponse?.Levels[1].InitSp</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="skill-description">@CleanDescription(operatorSkillResponse?.Levels[1].Description)</p>
+                    </div>
+                    <div class="skill-empty">No Data Found Yet</div>
                 </div>
             </div>
         </div>
@@ -211,6 +245,9 @@ else
         try
         {
             op = await service.GetByIdAsync(Id);
+
+            selectedSkill = 0;
+
             Logger.LogInformation("Found operator: {OperatorName} with description: {OperatorDescription}", op?.Name, op?.Description);
 
             if (op != null)
@@ -222,7 +259,7 @@ else
             Logger?.LogError(ex, "Error fetching operator details for Id: {Id}", Id);
         }
     }
-    private int elite = 1;
+    private int elite = 0;
     private bool showLightbox = false;
 
     private string GetImageUrl(string id) => elite switch
@@ -233,6 +270,10 @@ else
         _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_2.png"
     };
 
+    private int selectedSkill = 0;
+
+    private string GetSkillImageUrl(string? id) => !string.IsNullOrEmpty(id) ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/skills/skill_icon_{Uri.EscapeDataString(id)}.png" : "/assets/icons/charattrdetail/sprite_profession.png";
+    
     private Stats? GetCurrentStats()
     {
         if (op?.Phases == null || op.Phases.Count == 0) return null;

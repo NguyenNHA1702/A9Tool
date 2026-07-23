@@ -54,7 +54,8 @@ namespace Core.Models.Entities
         public double Duration { get; set; }
 
         [JsonPropertyName("blackboard")]
-        public List<SkillBlackboard> Blackboard { get; set; } = new();
+        [JsonConverter(typeof(FlexibleListConverter<SkillBlackboard>))]
+        public List<SkillBlackboard>? Blackboard { get; set; }
     }
 
     public class SkillSpData
