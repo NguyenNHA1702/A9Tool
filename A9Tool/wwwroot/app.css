@@ -1387,3 +1387,692 @@ html, body {
         height: 40px;
     }
 }
+
+/* ================================================================
+   OPERATOR DETAIL v2 — Full-screen game-style layout
+   ================================================================ */
+
+/* ── Root container: full viewport ── */
+.od-root {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: #08080c;
+    font-family: var(--font-sans, 'Inter', sans-serif);
+}
+
+/* ── Background art layer ── */
+/* Source: ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1.png */
+/* Fallback: Aceship/characters/{id}.png */
+.od-bg-layer {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 10%;
+    background-repeat: no-repeat;
+    filter: brightness(0.75);
+    z-index: 0;
+    transition: background-image 0.5s ease, filter 0.3s ease;
+}
+
+/* ── Vignette: tối 2 bên, trong giữa ── */
+.od-vignette {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to right,  rgba(0,0,0,0.80) 0%, transparent 32%, transparent 68%, rgba(0,0,0,0.80) 100%),
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 22%, transparent 65%, rgba(0,0,0,0.90) 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ── Top nav bar ── */
+.od-topnav {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    height: 52px;
+    background: rgba(0, 0, 0, 0.50);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.od-back-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ccc;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.od-back-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+/* Tab selector in topnav */
+.od-tabs {
+    display: flex;
+    gap: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 3px;
+}
+.od-tab {
+    background: transparent;
+    border: none;
+    color: #888;
+    padding: 4px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+}
+.od-tab.active {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+
+/* ── 3-column content layer ── */
+.od-content-layer {
+    position: absolute;
+    inset: 52px 0 0 0;     /* bắt đầu sau topnav */
+    z-index: 5;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow: hidden;
+}
+
+/* ── Panels (left & right) — glassmorphism ── */
+.od-panel {
+    background: rgba(8, 8, 14, 0.68);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 0 solid rgba(255, 255, 255, 0.07);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.od-panel::-webkit-scrollbar { width: 4px; }
+.od-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.od-panel-left  { width: 240px; min-width: 200px; border-right: 1px solid rgba(255,255,255,0.07); }
+.od-panel-right { width: 270px; min-width: 220px; border-left:  1px solid rgba(255,255,255,0.07); }
+
+/* ── Center column: không có panel, hiển thị tên ở đáy ── */
+.od-center-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px 20px;
+    pointer-events: none;   /* cho click xuyên qua đến background */
+}
+.od-center-info > * { pointer-events: auto; }
+
+/* Section label inside panels */
+.od-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #888;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 4px;
+}
+
+/* ── LEFT PANEL ── */
+
+/* Elite selector buttons */
+.od-elite-selector {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    padding: 3px;
+}
+.od-elite-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #888;
+    padding: 4px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition: all 0.15s;
+}
+.od-elite-btn.active {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+
+/* Level row with slider */
+.od-level-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.od-lv-label {
+    font-size: 0.68rem;
+    color: #888;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.od-lv-slider {
+    flex: 1;
+    height: 3px;
+    accent-color: #a78bfa;
+    cursor: pointer;
+}
+.od-lv-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    min-width: 24px;
+    text-align: right;
+}
+
+/* Stat rows */
+.od-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.82rem;
+    color: #d4d4d8;
+}
+.od-stat-row img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    opacity: 0.85;
+    flex-shrink: 0;
+}
+.od-stat-row span { flex: 1; }
+.od-stat-value {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+/* Trust section */
+.od-trust-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+.od-trust-bar-bg {
+    flex: 1;
+    height: 5px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.od-trust-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #a78bfa, #f472b6);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+.od-trust-pct {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #f472b6;
+    min-width: 36px;
+    text-align: right;
+}
+.od-trust-slider {
+    width: 100%;
+    accent-color: #a78bfa;
+    height: 3px;
+    cursor: pointer;
+    margin-bottom: 4px;
+}
+.od-trust-bonus {
+    background: rgba(167, 139, 250, 0.08);
+    border-radius: 4px;
+    padding: 4px 6px;
+    border-left: 2px solid #a78bfa;
+}
+
+/* Stars rating */
+.od-stars {
+    display: flex;
+    gap: 1px;
+    color: #fdb932;
+    font-size: 0.9rem;
+    letter-spacing: -1px;
+}
+
+/* ── CENTER ── */
+
+/* Operator name block */
+.od-op-name-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.od-op-class-mini {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
+}
+.od-op-name {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.95), 0 0 60px rgba(0,0,0,0.7);
+    line-height: 1;
+    margin: 0;
+    letter-spacing: -1px;
+}
+.od-op-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.od-subprof-icon {
+    width: 20px; height: 20px;
+    object-fit: contain;
+    opacity: 0.8;
+}
+.od-position-badge,
+.od-class-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.12);
+    color: #ccc;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.od-op-desc {
+    font-size: 0.8rem;
+    color: #aaa;
+    max-width: 380px;
+    line-height: 1.5;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    margin: 2px 0 0 0;
+}
+.od-tag-list {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.od-tag {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #b0b0b0;
+}
+
+/* ── RIGHT PANEL ── */
+
+/* Elite + Potential row */
+.od-ep-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.od-elite-icons {
+    display: flex;
+    gap: 4px;
+}
+.od-elite-icon-btn {
+    width: 32px; height: 32px;
+    background: transparent;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 3px;
+    transition: all 0.15s;
+}
+.od-elite-icon-btn img { width: 100%; height: 100%; object-fit: contain; }
+.od-elite-icon-btn.active { border-color: #fdb932; box-shadow: 0 0 8px rgba(253,185,50,0.4); }
+
+/* Potential dots */
+.od-potential { display: flex; flex-direction: column; gap: 4px; }
+.od-potential-label { font-size: 0.68rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.od-potential-dots {
+    display: flex;
+    gap: 3px;
+}
+.od-pot-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.od-pot-dot.active {
+    background: #a78bfa;
+    border-color: #a78bfa;
+    box-shadow: 0 0 6px rgba(167,139,250,0.5);
+}
+.od-pot-desc {
+    font-size: 0.72rem;
+    color: #a78bfa;
+    font-style: italic;
+}
+
+/* Skill Section */
+.od-skill-section { display: flex; flex-direction: column; gap: 8px; }
+
+/* Skill Tabs — icon grid với SP info */
+/* Asset: ArknightsAssets2/cn/assets/dyn/arts/skills/skill_icon_{iconId}.png */
+.od-skill-tabs { display: flex; gap: 6px; }
+.od-skill-tab {
+    position: relative;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: rgba(0,0,0,0.3);
+}
+.od-skill-tab.od-skill-tab-active {
+    border-color: #60a5fa;
+    box-shadow: 0 0 10px rgba(96,165,250,0.4);
+}
+.od-skill-tab-icon {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    display: block;
+}
+.od-skill-sp {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    font-size: 0.58rem;
+    background: rgba(0,0,0,0.75);
+    text-align: center;
+    color: #d0e0ff;
+    padding: 1px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Skill Detail Card */
+.od-skill-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Skill level dots (Level 1-7 + Mastery 1-3) */
+.od-skill-level-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.od-skill-level-label {
+    font-size: 0.65rem;
+    color: #888;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.od-skill-lvl-dots {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+.od-lvl-dot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.58rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #777;
+    user-select: none;
+}
+.od-lvl-dot:hover { border-color: rgba(255,255,255,0.4); color: #ccc; }
+.od-lvl-dot.active {
+    background: #60a5fa;
+    border-color: #60a5fa;
+    color: #fff;
+    box-shadow: 0 0 6px rgba(96,165,250,0.5);
+}
+/* Mastery dots — màu vàng */
+.od-lvl-dot.mastery {
+    background: rgba(253,185,50,0.1);
+    border-color: rgba(253,185,50,0.4);
+    color: #fdb932;
+    border-radius: 3px;   /* square-ish để phân biệt với normal levels */
+}
+.od-lvl-dot.mastery:hover { border-color: #fdb932; }
+.od-lvl-dot.mastery.active {
+    background: #fdb932;
+    border-color: #fdb932;
+    color: #000;
+    box-shadow: 0 0 8px rgba(253,185,50,0.5);
+}
+
+/* Separator between level 7 and mastery */
+.od-lvl-separator {
+    width: 1px;
+    height: 16px;
+    background: rgba(255,255,255,0.15);
+    align-self: center;
+    margin: 0 2px;
+}
+
+/* Skill header inside card */
+.od-skill-header {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+.od-skill-icon-sm {
+    width: 44px; height: 44px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+.od-skill-meta { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.od-skill-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    line-height: 1.2;
+}
+
+/* SP type badge: Auto Recovery / Manual / Offensive Recovery */
+.od-sp-type-badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 3px;
+    background: #1a2a1a;
+    color: #4ade80;
+    border: 1px solid #2d5a2d;
+}
+.od-sp-type-badge.manual { background: #1a1a2a; color: #60a5fa; border-color: #2d3a5a; }
+.od-sp-type-badge.offensive { background: #2a1a1a; color: #f87171; border-color: #5a2d2d; }
+
+/* Duration badge */
+.od-duration-badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.07);
+    color: #aaa;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Skill stats: SP, InitSP, Duration */
+.od-skill-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.od-skill-stat-item {
+    font-size: 0.72rem;
+    color: #888;
+    background: rgba(255,255,255,0.05);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.07);
+}
+.od-skill-stat-item b { color: #d0e0ff; font-weight: 700; }
+
+/* Skill description */
+.od-skill-desc {
+    font-size: 0.78rem;
+    color: #b0b0b0;
+    line-height: 1.55;
+    margin: 0;
+}
+.od-highlight {
+    color: #60a5fa;
+    font-weight: 700;
+}
+
+/* Skill rank display */
+.od-skill-rank {
+    font-size: 0.7rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.07);
+}
+
+/* Talent section */
+.od-talent-section { display: flex; flex-direction: column; gap: 6px; }
+.od-talent-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-left: 3px solid #a78bfa;
+    border-radius: 4px;
+    padding: 8px;
+}
+.od-talent-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin-bottom: 3px;
+}
+.od-talent-unlock {
+    font-size: 0.65rem;
+    color: #888;
+    margin-bottom: 4px;
+}
+.od-talent-desc {
+    font-size: 0.75rem;
+    color: #aaa;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Module section */
+.od-module-section { display: flex; flex-direction: column; gap: 6px; }
+.od-module-slot {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.od-module-icon {
+    width: 44px; height: 44px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    color: #888;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.od-module-icon.active { border-color: #60a5fa; }
+.od-module-name { font-size: 0.78rem; color: #ccc; font-weight: 600; }
+.od-trait-text { font-size: 0.75rem; color: #aaa; line-height: 1.5; }
+
+/* Loading state */
+.od-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 16px;
+    color: #888;
+    font-size: 0.9rem;
+}
+.od-loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: od-spin 0.8s linear infinite;
+}
+@keyframes od-spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive: tablet/mobile ── */
+@media (max-width: 900px) {
+    .od-panel-left  { width: 200px; min-width: 160px; }
+    .od-panel-right { width: 230px; min-width: 180px; }
+}
+@media (max-width: 640px) {
+    .od-content-layer {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .od-panel-left, .od-panel-right {
+        width: 100%;
+        max-width: 100%;
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .od-bg-layer { position: fixed; }
+    .od-op-name { font-size: 2rem; }
+}
