@@ -186,38 +186,48 @@ else
                     <div class="skill-tabs">
                         @for (int i = 0; i < op.Skills.Count; i++)
                         {
-                            <button class="skill-tab @(i == selectedSkill ? "active" : "")" @onclick="() => selectedSkill = i">Skill @(i + 1)</button>
+                            var index = i; /* Tạo biến cục bộ giữ giá trị chuẩn cho từng nút */
+                            <button class="skill-tab @(index == selectedSkill ? "active" : "")"
+                                    @onclick="() => selectedSkill = index">
+                                Skill @(index + 1)
+                            </button>
                         }
                     </div>
 
-                    <div class="skill-card">
-                        <div class="skill-card-header">
-                            @{
-                                //note: xóa curentSkill đi dùng operatorSkillResponse vì nó đang bị null skill 2 3 của các operator
-                                var currentSkill = (op.Skills != null && selectedSkill < op.Skills.Count) ? op.Skills[selectedSkill] : null;
-                                Logger.LogInformation("Load skill with ID: {id}", currentSkill?.SkillId);
+                    @{
+                        var operatorSkillResponse = (skills != null && selectedSkill < skills.Count) ? skills[selectedSkill] : null;
+                        Logger?.LogInformation("Load skill with ID: {id}", operatorSkillResponse?.SkillId);
+                        var firstLevel = operatorSkillResponse?.Levels?.FirstOrDefault();
+                    }
 
-                                var operatorSkillResponse = (op.Skills != null && selectedSkill < op.Skills.Count) ? skills[selectedSkill] : null;
-                            }
+                    @if (operatorSkillResponse != null)
+                    {
+                        <div class="skill-card">
+                            <div class="skill-card-header">
+                                <img class="skill-icon"
+                                     src="@GetSkillImageUrl(operatorSkillResponse.IconId ?? operatorSkillResponse.SkillId)"
+                                     onerror="@($"this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/skills/skill_icon_{operatorSkillResponse.IconId ?? operatorSkillResponse.SkillId}.png';")" />
 
-                            <img class="skill-icon" src="@GetSkillImageUrl(currentSkill?.SkillId)" />
+                                <div class="skill-header-info">
+                                    <div class="skill-name-row">
+                                        <span class="skill-name">@firstLevel?.Name</span>
+                                        <span class="sp-badge sp-auto">@operatorSkillResponse.SkillType</span>  
+                                    </div>
 
-                            <div class="skill-header-info">
-                                <div class="skill-name-row">
-                                    <span class="skill-name">@operatorSkillResponse?.Levels[1].Name</span>
-                                    <span class="sp-badge sp-auto">@operatorSkillResponse?.SkillType</span>
-                                </div>
-
-                                <div class="skill-sp-meta">
-                                    <span class="sp-meta-item">SP: <span class="stat-value">@operatorSkillResponse?.Levels[1].SpCost</span></span>
-                                    <span class="sp-meta-item">Duration: <span class="stat-value">@operatorSkillResponse?.Levels[1].Duration</span></span>
-                                    <span class="sp-meta-item">Init SP: <span class="stat-value">@operatorSkillResponse?.Levels[1].InitSp</span></span>
+                                    <div class="skill-sp-meta">
+                                        <span class="sp-meta-item">SP: <span class="stat-value">@firstLevel?.SpCost</span></span>
+                                        <span class="sp-meta-item">Duration: <span class="stat-value">@firstLevel?.Duration</span></span>
+                                        <span class="sp-meta-item">Init SP: <span class="stat-value">@firstLevel?.InitSp</span></span>
+                                    </div>
                                 </div>
                             </div>
+                            <p class="skill-description">@CleanDescription(firstLevel?.Description)</p>
                         </div>
-                        <p class="skill-description">@CleanDescription(operatorSkillResponse?.Levels[1].Description)</p>
-                    </div>
-                    <div class="skill-empty">No Data Found Yet</div>
+                    }
+                    else
+                    {
+                        <div class="skill-empty">No Data Found Yet</div>
+                    }
                 </div>
             </div>
         </div>

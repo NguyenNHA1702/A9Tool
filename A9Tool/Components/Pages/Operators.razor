@@ -12,7 +12,7 @@
     {
         <div class="flex items-baseline gap-3 mb-6">
             <h1 class="text-3xl font-bold">Arknights Operators</h1>
-            <span class="text-muted" @onclick="ResetCache">@FilteredCharacters.Count() operators</span>
+            <span class="text-muted cursor-pointer" @onclick="ResetCache">@FilteredCharacters.Count() operators</span>
         </div>
 
         <div class="filter-container">
@@ -50,19 +50,24 @@
             {
                 var id = op.Id?.ToLower() ?? "";
                 <div class="op-card" data-rarity="@op.Rarity" @key="op.Id" @onclick="() => NavigateToDetail(op.Id)">
-                    <div class="op-card-rarity-bar rarity-bar-@(op.Rarity)"></div>
+                    <!-- Main Character Portrait -->
                     <img class="op-card-img"
                          @key="@($"img-{op.Id}")"
-                         src="https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/charportraits/@(id)_1.png"
+                         src="https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/@(id)_1.png"
                          onerror="@($"this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/@(id).png';this.onerror=function(){{this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/{id}.png';}};")"
                          alt="@op.Name"
                          loading="lazy" />
-                    <div class="op-card-body">
+
+                    <!-- Top Overlay Badge: Class Icon & Rarity Stars -->
+                    <div class="op-card-top-badge rarity-badge-@(op.Rarity)">
+                        <img class="op-class-icon" src="@GetClassIconUrl(op.Profession)" alt="@op.Profession" />
+                        <span class="op-stars-text">@FormatRarity(op.Rarity)</span>
+                    </div>
+
+                    <!-- Bottom Overlay Banner: Operator Name & Class -->
+                    <div class="op-card-bottom-banner">
                         <div class="op-card-name">@op.Name</div>
-                        <div class="op-card-meta">
-                            <span class="rarity-text rarity-@(op.Rarity)">@FormatRarity(op.Rarity)</span>
-                            <span class="class-badge @op.Profession">@FormatProfession(op.Profession)</span>
-                        </div>
+                        <div class="op-card-class-sub">@FormatProfession(op.Profession)</div>
                     </div>
                 </div>
             }
@@ -80,7 +85,7 @@
         => list = await service.GetAllAsync();
 
     private IEnumerable<Character> FilteredCharacters => list?
-        .Where(c => string.IsNullOrEmpty(searchTerm) || c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        .Where(c => string.IsNullOrEmpty(searchTerm) || (c.Name != null && c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
         .Where(c => string.IsNullOrEmpty(selectRarity) || c.Rarity == selectRarity)
         .Where(c => string.IsNullOrEmpty(selectProfession) || c.Profession == selectProfession)
         ?? Enumerable.Empty<Character>();
@@ -91,10 +96,10 @@
             Nav.NavigateTo($"/operators/{id}");
     }
 
-    private string FormatRarity(string r)
+    private string FormatRarity(string? r)
         => string.IsNullOrEmpty(r) ? "" : r.Replace("TIER_", "") + "★";
 
-    private string FormatProfession(string p) => p switch
+    private string FormatProfession(string? p) => p switch
     {
         "PIONEER" => "Vanguard",
         "WARRIOR" => "Guard",
@@ -104,7 +109,20 @@
         "MEDIC" => "Medic",
         "SUPPORT" => "Supporter",
         "SPECIAL" => "Specialist",
-        _ => p
+        _ => p ?? ""
+    };
+
+    private string GetClassIconUrl(string? p) => p switch
+    {
+        "PIONEER" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_vanguard.png",
+        "WARRIOR" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_guard.png",
+        "TANK" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_defender.png",
+        "SNIPER" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_sniper.png",
+        "CASTER" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_caster.png",
+        "MEDIC" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_medic.png",
+        "SUPPORT" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_supporter.png",
+        "SPECIAL" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_specialist.png",
+        _ => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_caster.png"
     };
 
     private async Task ResetCache()

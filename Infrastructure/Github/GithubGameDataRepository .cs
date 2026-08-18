@@ -35,6 +35,7 @@ namespace Infrastructure.Github
                 if (File.Exists(localPath) && File.GetLastWriteTime(localPath) > DateTime.Now.AddDays(-1))
                 {
                     _logger.LogInformation("Loading cache: {file}", Path.GetFileName(localPath));
+                    _logger.LogInformation("File location: {file}", localPath);
                     var json = await File.ReadAllTextAsync(localPath, Encoding.UTF8);
                     response = JsonSerializer.Deserialize<Dictionary<string, T>>(json, opts);
                 }

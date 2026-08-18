@@ -567,8 +567,8 @@ html, body {
 
 .operator-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
 }
 
 .operator-card {
@@ -665,67 +665,110 @@ html, body {
         color: var(--primary-foreground);
     }
 
-/* Portrait card */
+/* Arknights Portrait Card Style */
 .op-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
+    position: relative;
+    aspect-ratio: 1 / 2.3;
+    background: #141416;
+    border-radius: 4px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform .2s, border-color .2s, box-shadow .2s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
     display: flex;
     flex-direction: column;
 }
 
-    .op-card:hover {
-        transform: translateY(-4px);
-        border-color: var(--ring);
-        box-shadow: 0 8px 24px rgba(0,0,0,.12);
-    }
-
-.op-card-rarity-bar {
-    height: 3px;
-    width: 100%;
+.op-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
 }
 
 .op-card-img {
     width: 100%;
-    aspect-ratio: 3/4;
+    height: 100%;
     object-fit: cover;
-    object-position: top;
+    object-position: center 15%;
     display: block;
+    background: radial-gradient(circle at center, #27272a 0%, #0f0f11 100%);
     transition: transform .25s ease;
-    background: var(--muted);
 }
 
 .op-card:hover .op-card-img {
     transform: scale(1.04);
 }
 
-.op-card-body {
-    padding: .75rem;
+/* Top-left Badge: Class Icon & Rarity Stars */
+.op-card-top-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px 3px 4px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    border-bottom-right-radius: 6px;
+    border-left: 3px solid #888;
+}
+
+.op-card-top-badge.rarity-badge-TIER_6 { border-left-color: #ff7a00; }
+.op-card-top-badge.rarity-badge-TIER_5 { border-left-color: #ffc700; }
+.op-card-top-badge.rarity-badge-TIER_4 { border-left-color: #e040fb; }
+.op-card-top-badge.rarity-badge-TIER_3 { border-left-color: #00b0ff; }
+.op-card-top-badge.rarity-badge-TIER_2 { border-left-color: #76ff03; }
+.op-card-top-badge.rarity-badge-TIER_1 { border-left-color: #9e9e9e; }
+
+.op-class-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+.op-stars-text {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ffc700;
+    letter-spacing: -0.5px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* Bottom Overlay Banner */
+.op-card-bottom-banner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    padding: 24px 8px 8px 8px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 65%, transparent 100%);
     display: flex;
     flex-direction: column;
-    gap: .35rem;
+    gap: 2px;
 }
 
 .op-card-name {
-    font-size: var(--text-md);
-    font-weight: 600;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    line-height: 1.2;
 }
 
-.op-card-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.rarity-text {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
+.op-card-class-sub {
+    font-size: 0.68rem;
+    color: #a1a1aa;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Rarity bar colors */
