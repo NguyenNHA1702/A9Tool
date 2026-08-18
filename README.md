@@ -27,10 +27,15 @@ A9Tools/
 │   └── Services/                   # CharacterService...
 ├── Infrastructure/                 # Tầng hạ tầng (Data Fetching & Storage)
 │   └── Github/                     # Gọi API và quản lý cache offline từ GitHub GameData
-└── A9Tool/                         # Tầng Giao diện hiển thị (Blazor Hybrid App)
-    ├── Components/                 # Components tái sử dụng
-    │   └── Pages/                  # Pages chính (Home, Operators, OperatorDetail)
-    └── wwwroot/                    # CSS, JS, Assets tĩnh
+├── A9Tool/                         # Tầng Giao diện hiển thị (Blazor Hybrid Client App)
+│   ├── Components/                 # Components tái sử dụng
+│   │   └── Pages/                  # Pages chính (Home, Operators, OperatorDetail)
+│   └── wwwroot/                    # CSS, JS, Assets tĩnh
+└── A9Tool.API/                     # [Kế hoạch Epic 10] Backend ASP.NET Core Web API & Sync Server
+    ├── Controllers/                # AuthController (JWT), RosterSyncController...
+    ├── Data/                       # AppDbContext (EF Core + SQL Server / PostgreSQL)
+    ├── Services/                   # AuthService, RosterCloudService...
+    └── Dockerfile                  # Containerize API Server & Database
 ```
 
 ---
@@ -131,3 +136,36 @@ A9Tools/
 | [ ] | A9-901 | **So sánh Operator (Compare Tool):** Đặt song song các Operator để đối chiếu chỉ số và kỹ năng. | 4h | 💤 Thấp | `Backlog` |
 | [ ] | A9-902 | **Xây dựng Đội hình - Squad Builder:** Tạo đội hình 12 nhân vật, đưa ra các đánh giá phân bổ class và gợi ý synergy. | 6h | 💤 Thấp | `Backlog` |
 | [ ] | A9-903 | **Trình tối ưu map farm:** Tích hợp API tỉ lệ rơi đồ cộng đồng từ Penguin Stats để gợi ý map tối ưu nhất. | 6h | 💤 Thấp | `Backlog` |
+
+---
+
+### PHẦN IV: HỆ THỐNG CÁ NHÂN HÓA & ĐỒNG BỘ TÀI KHOẢN (USER ROSTER & ACCOUNT SYNC)
+
+#### 📋 Epic 10: Quản lý Roster & Đồng bộ Tài khoản (Krooster System & Web API Backend - Thời gian ước lượng: ~35h)
+
+| Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
+| :---: | :---: | :--- | :---: | :---: | :---: |
+| [ ] | A9-1001 | **(Cấp 1) Quản lý Roster thủ công & Lưu Local:** Tạo UI chọn nhanh Operator sở hữu (Level, Elite 0/1/2, Skill M1-M3, Module). Lưu trữ dữ liệu vào SQLite/JSON local. | 8h | ⚡ Cao | `Backlog` |
+| [ ] | A9-1002 | **(Cấp 2) Import / Export chuẩn JSON Krooster & MAA:** Đọc và xuất dữ liệu Roster chuẩn file `.json` tương thích 100% với Krooster và MeoArknightsAssistant. | 5h | ⚡ Cao | `Backlog` |
+| [ ] | A9-1003 | **Xây dựng Backend ASP.NET Core Web API (`A9Tool.API`):** Tạo service Backend quản lý User & Cloud Sync Roster. Tích hợp JWT Auth (`/api/v1/auth/login`), EF Core + SQL Server/PostgreSQL, Swagger OpenAPI & đóng gói Docker Container. | 12h | ⚡ Cao | `Backlog` |
+| [ ] | A9-1004 | **(Cấp 3) Tự động Kéo dữ liệu từ Server Yostar/Hypergryph:** Kết nối Auth Token game, giải mã Protobuf để tự động kéo Roster + Kho nguyên liệu thực tế về app. | 10h | 🛠️ Nâng cao | `Backlog` |
+| [ ] | A9-1005 | **Tích hợp Roster cá nhân vào Material Planner:** Tự động lấy Roster đang có ở Epic 10 đưa vào Bảng tính nguyên liệu (Epic 4) để trừ ra số lượng item cần farm thực tế. | 5h | ⚡ Cao | `Backlog` |
+
+---
+
+## 4. Tài liệu Tham khảo & Schema Cần dùng (References & Schemas)
+
+1. **Dữ liệu Game & Repo đang sử dụng trực tiếp trong Codebase:**
+   * **ArknightsAssets / ArknightsGamedata:** [GitHub Repo](https://github.com/ArknightsAssets/ArknightsGamedata) *(Nguồn JSON `character_table.json`, `skill_table.json`... đang dùng chính trong `GithubGameDataRepository.cs`)*
+   * **ArknightsAssets / ArknightsAssets2:** [GitHub Repo](https://github.com/ArknightsAssets/ArknightsAssets2) *(Nguồn tải ảnh Avatar & Character Arts `.png`)*
+   * **Kengxxiao / ArknightsGameData:** [GitHub Repo](https://github.com/Kengxxiao/ArknightsGameData) *(Nguồn dữ liệu game bản Server CN dự phòng)*
+
+2. **Roster Tracker & Schema tham khảo:**
+   * **Krooster Website:** [https://krooster.com](https://krooster.com) *(Tham khảo UI/UX và cấu trúc Export JSON Roster)*
+   * **MAA Copilot Schema:** [MaaAssistantArknights GitHub](https://github.com/MaaAssistantArknights/MaaAssistantArknights) *(Chuẩn JSON Import/Export dữ liệu tài khoản Arknights)*
+   * **Penguin Stats API:** [Penguin Stats Docs](https://penguin-stats.io/) *(API Tỉ lệ rơi nguyên liệu các map farm)*
+
+3. **Giao thức Kết nối Game Server (Cho Cấp 3 - Auto Sync):**
+   * **Arknights Protocol / Protobuf Schemas:** [Arknights Protocol Schemas](https://github.com/freshtuna/Arknights-Protocol) *(Tham khảo cấu trúc Protobuf để deserialize dữ liệu tài khoản game)*
+
+
