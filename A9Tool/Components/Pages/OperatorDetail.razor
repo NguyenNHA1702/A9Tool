@@ -1,5 +1,6 @@
 @page "/operators/{Id}"
 @using Core.Github.DTOs.Response
+@using Core.DTOs.Response
 @using Core.Models.Entities
 @inject Core.Services.CharacterService service
 @inject NavigationManager Nav
@@ -15,234 +16,375 @@
 }
 else
 {
-    var id = op.Id?.ToLower() ?? "";
+    <div class="od-root">
 
-    <div class="max-w-[1400px] mx-auto p-6">
-        <button class="back-btn" @onclick='() => Nav.NavigateTo("/Operators")'>
-            ← Back
-        </button>
+        <div class="od-bg-layer" style="background-image: url('@currentBgUrl')"></div>
 
-        <div class="detail-layout">
-            <div class="detail-splash">
-                <div class="rarity-stripe rarity-stripe-@op.Rarity"></div>
-                <img @key="elite"
-                     src="@GetImageUrl(id)"
-                     alt="@op.Name"
-                     loading="lazy"
-                     style="cursor: zoom-in;"
-                     @onclick="() => showLightbox = true" />
-                <div class="elite-toggle-container" style="margin: .75rem;">
-                    <button class="elite-btn @(elite == 0 ? "active" : "")" @onclick="() => elite = 0">Avatar</button>
-                    <button class="elite-btn @(elite == 1 ? "active" : "")" @onclick="() => elite = 1">E1</button>
-                    <button class="elite-btn @(elite == 2 ? "active" : "")" @onclick="() => elite = 2">E2</button>
-                </div>
-            </div>
+        <!-- Ảnh ẩn dùng để test load, không hiển thị -->
+        <img src="@GetImageUrl(Id, displayElite)"
+             style="display:none"
+             @key="elite"
+             @onerror="OnImageError"
+             @onload="() => currentBgUrl = GetImageUrl(Id, displayElite)" />
+    </div>
 
-            <div class="detail-info">
+    <div class="od-vignette"></div>
 
-                <!-- BASIC INFO -->
-                <div class="info-card">
-                    <div class="info-name">@op.Name</div>
-                    <div class="info-header-meta">
-                        <img src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId)_icon.png"
-                             style="width:24px; height:24px;"
-                             onerror="this.style.display='none'" />
-                        <span class="class-badge @op.Profession">@FormatProfession(op.Profession)</span>
+    <nav class="od-topnav">
+        <button class="od-back-btn" onclick="history.back()">← Back</button>
+
+        <!-- Tab selector (no logic yet) -->
+        <div class="od-tabs">
+            <button class="od-tab active">Info</button>
+            <button class="od-tab">Skills</button>
+            <!-- Có thể mở rộng: Talents, Module, Lore -->
+        </div>
+    </nav>
+
+    <div class="od-content-layer">
+        <!-- ── LEFT PANEL: Attributes + Trust ── -->
+        <aside class="od-panel od-panel-left">
+            <!-- ATTRIBUTES SECTION -->
+            <div class="od-section od-attributes">
+                <div class="od-section-label">Attributes ▶▶</div>
+                <!-- Elite Selector (E0 / E1 / E2) -->
+                @if (op?.Phases?.Count == 3)
+                {
+                    <div class="od-elite-selector">
+                        <button class="od-elite-btn @(elite == 0 ? "active" : "")" @onclick="() => OnEliteChanged(0)">E0</button>
+                        <button class="od-elite-btn @(elite == 1 ? "active" : "")" @onclick="() => OnEliteChanged(1)">E1</button>
+                        <button class="od-elite-btn @(elite == 2 ? "active" : "")" @onclick="() => OnEliteChanged(2)">E2</button>
                     </div>
-                    <div class="info-subtitle">
-                        @op.DisplayNumber · @op.SubProfessionId · @op.Position
+                }
+                else
+                {
+                    <div class="od-elite-selector">
+                        <button class="od-elite-btn @(elite == 0 ? "active" : "")" @onclick="() => OnEliteChanged(0)">E0</button>
+                        <button class="od-elite-btn @(elite == 1 ? "active" : "")" @onclick="() => OnEliteChanged(1)">E1</button>
                     </div>
-                    <p class="text-muted">@CleanDescription(op.Description)</p>
-                    <div class="tag-list">
-                        @foreach (var tag in op.Tags ?? [])
-                        {
-                            <span class="class-badge">@tag</span>
-                        }
+                }
+
+                <!-- Level Slider -->
+                <div class="od-level-row">
+                    <span class="od-level-label">LV</span>
+                    <input class="od-lv-slider"
+                           type="range"
+                           min="1"
+                           max="@op.Phases[elite].MaxLevel"
+                           @bind="currentLevel" />
+                    <span class="od-lv-value">@currentLevel</span>
+                </div>
+
+                <!-- Stat rows -->
+                @{
+                    var stats = GetStatsAtTrust(GetRawStat(), selectedTrust);
+                        Logger.LogInformation(
+                    "Current stat for {opName}(Trust: {trust}): E{elite} LV: {level}, MaxHP: {maxHp}, ATK: {atk}, DEF: {def}, RES: {res}, Cost: {cost}, Block: {block}, Redeploy: {redeploy}",
+                        op.Name,
+                        selectedTrust,
+                        elite,
+                        currentLevel,
+                        stats.MaxHp,
+                        stats.Atk,
+                        stats.Def,
+                        stats.MagicResistance,
+                        stats.Cost,
+                        stats.BlockCnt,
+                        stats.RespawnTime );
+                }
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_hp.png" />
+                    <span>@stats.MaxHp</span>  <!-- bind: stats.MaxHp -->
+                </div>
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_atk.png" />
+                    <span>@stats.Atk</span>   <!-- bind: stats.Atk -->
+                </div>
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_def.png" />
+                    <span>@stats.Def</span>   <!-- bind: stats.Def -->
+                </div>
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_res.png" />
+                    <span>@stats.MagicResistance</span>   <!-- bind: stats.MagicResistance -->
+                </div>
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_cost.png" />
+                    <span>@stats.Cost</span>    <!-- bind: stats.Cost -->
+                </div>
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_block.png" />
+                    <span>@stats.BlockCnt</span>     <!-- bind: stats.BlockCnt -->
+                </div>
+                <div class="od-stat-row">
+                    <img src="/assets/icons/characterdetail/icon_time.png" />
+                    <span>@stats.RespawnTime</span>   <!-- bind: stats.RespawnTime -->
+                </div>
+
+                <!-- TRUST BONUS SECTION -->
+                <div class="od-section-label" style="margin-top: 12px;">Trust</div>
+
+                <div class="od-trust-row">
+                    <div class="od-trust-bar-bg">
+                        <div class="od-trust-bar-fill" style="width: @(selectedTrust / 2.0)%;"></div>
+
+                        <input class="od-trust-slider"
+                               type="range"
+                               min="0"
+                               max="200"
+                               @bind="selectedTrust"
+                               @bind:event="oninput" />
                     </div>
+                    <span class="od-trust-pct">@(selectedTrust)%</span>
                 </div>
 
-                <!-- STATS -->
-                <div class="info-card">
-                    <div class="info-section-label">STATS</div>
-                    <div class="elite-toggle-container">
-                        <button class="elite-btn @(elite == 0 ? "active" : "")" @onclick="() => elite = 0">E0</button>
-                        <button class="elite-btn @(elite == 1 ? "active" : "")" @onclick="() => elite = 1">E1</button>
-                        <button class="elite-btn @(elite == 2 ? "active" : "")" @onclick="() => elite = 2">E2</button>
-                    </div>
-                    @{
-                        var stats = GetCurrentStats();
-                    }
-                    @if (stats != null)
+                @{
+                    var trustBonus = GetTrustBonus(selectedTrust);
+                }
+                <div class="od-trust-bonus">
+                    @if (trustBonus.MaxHp > 0 || trustBonus.Atk > 0 || trustBonus.Def > 0 || trustBonus.MagicResistance > 0)
                     {
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_hp.png" style="width:20px;height:20px;" />
-                                <span>HP</span>
-                            </div>
-                            <span class="stat-value">@stats.MaxHp</span>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_atk.png" style="width:20px;height:20px;" />
-                                <span>ATK</span>
-                            </div>
-                            <span class="stat-value">@stats.Atk</span>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_def.png" style="width:20px;height:20px;" />
-                                <span>DEF</span>
-                            </div>
-                            <span class="stat-value">@stats.Def</span>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_res.png" style="width:20px;height:20px;" />
-                                <span>RES</span>
-                            </div>
-                            <span class="stat-value">@stats.MagicResistance%</span>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_cost.png" style="width:20px;height:20px;" />
-                                <span>COST</span>
-                            </div>
-                            <span class="stat-value">@stats.Cost</span>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_block.png" style="width:20px;height:20px;" />
-                                <span>BLOCK</span>
-                            </div>
-                            <span class="stat-value">@stats.BlockCnt</span>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <img src="/assets/icons/charattrdetail/icon_time.png" style="width:20px;height:20px;" />
-                                <span>REDEPLOY</span>
-                            </div>
-                            <span class="stat-value">@stats.RespawnTime s</span>
-                        </div>
-                    }
-                </div>
-
-                <!-- TALENTS -->
-                <div class="info-card">
-                    <div class="info-section-label">TALENTS</div>
-                    @foreach (var talent in op.Talents)
-                    {
-                        var candidate = talent.Candidates?.FirstOrDefault(c => c.RequiredPotentialRank == 0);
-                        if (candidate != null)
+                        @if (trustBonus.MaxHp > 0)
                         {
-                            <div class="talent-item">
-                                <div class="talent-name">@candidate.Name</div>
-                                <span class="text-muted">Unlock: @FormatPhase(candidate.UnlockCondition?.Phase)</span>
-                                <p class="text-muted">@CleanDescription(candidate.Description)</p>
-                            </div>
+                            <span class="od-trust-bonus-item">+@trustBonus.MaxHp HP</span>
                         }
-                    }
-                </div>
-
-                <!-- POTENTIAL -->
-                <div class="info-card">
-                    <div class="info-section-label">POTENTIAL</div>
-                    @for (int i = 0; i < op.PotentialRanks.Count; i++)
-                    {
-                        <div class="potential-row">
-                            <div class="potential-badge">@(i + 1)</div>
-                            <span>@op.PotentialRanks[i].Description</span>
-                        </div>
-                    }
-                </div>
-
-                <!-- TRUST BONUS -->
-                <div class="info-card">
-                    <div class="info-section-label">TRUST BONUS</div>
-                    @{
-                        var trust = op.TrustBonus.FirstOrDefault(x => x.Level == 50)?.Data;
-                    }
-                    @if (trust != null)
-                    {
-                        @if (trust.MaxHp != 0)
+                        @if (trustBonus.Atk > 0)
                         {
-                            <div class="stat-row">
-                                <div class="stat-label">
-                                    <img src="/assets/icons/charattrdetail/icon_hp.png" style="width:20px;height:20px;" />
-                                    <span>Max HP</span>
-                                </div>
-                                <span class="stat-value">+@trust.MaxHp</span>
-                            </div>
+                            <span class="od-trust-bonus-item">+@trustBonus.Atk ATK</span>
                         }
-                        @if (trust.Atk != 0)
+                        @if (trustBonus.Def > 0)
                         {
-                            <div class="stat-row">
-                                <div class="stat-label">
-                                    <img src="/assets/icons/charattrdetail/icon_atk.png" style="width:20px;height:20px;" />
-                                    <span>ATK</span>
-                                </div>
-                                <span class="stat-value">+@trust.Atk</span>
-                            </div>
+                            <span class="od-trust-bonus-item">+@trustBonus.Def DEF</span>
                         }
-                    }
-                </div>
-
-                <div class="skill-selection">
-                    <div class="skill-tabs">
-                        @for (int i = 0; i < op.Skills.Count; i++)
+                        @if (trustBonus.MagicResistance > 0)
                         {
-                            var index = i; /* Tạo biến cục bộ giữ giá trị chuẩn cho từng nút */
-                            <button class="skill-tab @(index == selectedSkill ? "active" : "")"
-                                    @onclick="() => selectedSkill = index">
-                                Skill @(index + 1)
-                            </button>
+                            <span class="od-trust-bonus-item">+@trustBonus.MagicResistance RES</span>
                         }
-                    </div>
-
-                    @{
-                        var operatorSkillResponse = (skills != null && selectedSkill < skills.Count) ? skills[selectedSkill] : null;
-                        Logger?.LogInformation("Load skill with ID: {id}", operatorSkillResponse?.SkillId);
-                        var firstLevel = operatorSkillResponse?.Levels?.FirstOrDefault();
-                    }
-
-                    @if (operatorSkillResponse != null)
-                    {
-                        <div class="skill-card">
-                            <div class="skill-card-header">
-                                <img class="skill-icon"
-                                     src="@GetSkillImageUrl(operatorSkillResponse.IconId ?? operatorSkillResponse.SkillId)"
-                                     onerror="@($"this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/skills/skill_icon_{operatorSkillResponse.IconId ?? operatorSkillResponse.SkillId}.png';")" />
-
-                                <div class="skill-header-info">
-                                    <div class="skill-name-row">
-                                        <span class="skill-name">@firstLevel?.Name</span>
-                                        <span class="sp-badge sp-auto">@operatorSkillResponse.SkillType</span>  
-                                    </div>
-
-                                    <div class="skill-sp-meta">
-                                        <span class="sp-meta-item">SP: <span class="stat-value">@firstLevel?.SpCost</span></span>
-                                        <span class="sp-meta-item">Duration: <span class="stat-value">@firstLevel?.Duration</span></span>
-                                        <span class="sp-meta-item">Init SP: <span class="stat-value">@firstLevel?.InitSp</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="skill-description">@CleanDescription(firstLevel?.Description)</p>
-                        </div>
                     }
                     else
                     {
-                        <div class="skill-empty">No Data Found Yet</div>
+                        <span style="opacity: 0.6;">No Trust Bonus</span>
                     }
                 </div>
             </div>
-        </div>
-    </div>
 
-    @if (showLightbox)
-    {
-        <div class="lightbox" @onclick="() => showLightbox = false">
-            <img src="@GetImageUrl(id)" @onclick:stopPropagation />
+            <!-- STAR RATING -->
+            @{
+                var stars = op.Rarity switch
+                {
+                    "TIER_1" => "★",
+                    "TIER_2" => "★★",
+                    "TIER_3" => "★★★",
+                    "TIER_4" => "★★★★",
+                    "TIER_5" => "★★★★★",
+                    "TIER_6" => "★★★★★★",
+                    _ => ""
+                };
+            }
+
+            <div class="od-stars">@stars</div>
+        </aside>
+
+        <div class="od-center-info">
+            <div class="od-op-name-block">
+                <img class="od-op-class-mini" src="@GetClassIconUrl(op.Profession)" />
+                <h1 class="od-op-name">@op.Name</h1>
+
+                <!-- SubProf + Position + Tags -->
+                <div class="od-op-meta">
+                    <img class="od-subprof-icon" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png"/>
+                    <span class="od-position-badge">@op.Position</span>  <!-- bind: op.Position -->
+                    <span class="od-class-badge">@FormatProfession(op.Profession)</span>     <!-- bind: FormatProfession -->
+                </div>
+
+                <!-- Description -->
+                <p class="od-op-desc">@CleanDescription(op.Description)</p>
+
+                <!-- Tags -->
+                @if (op.Tags != null && op.Tags.Count > 0)
+                {
+                    <div class="od-tag-list">
+                        @foreach (var tag in op.Tags)
+                        {
+                            <span class="od-tag">@tag</span>
+                        }
+                    </div>
+                }
+            </div>
         </div>
-    }
+
+        <!-- ── RIGHT PANEL: Elite/Potential/Skill/Talent/Module ── -->
+        <aside class="od-panel od-panel-right">
+
+            <!-- ELITE + POTENTIAL ROW -->
+            <div class="od-ep-row">
+                <!-- Elite Icons -->
+                <div class="od-elite-icons">
+                    @for (int i = 0; i < (op.Phases?.Count ?? 1); i++)
+                    {
+                        var eIndex = i;
+                        <button class="od-elite-icon-btn @(elite == eIndex ? "active" : "")"
+                                @onclick="() => OnEliteChanged(eIndex)"
+                                title="Elite @eIndex">
+                            <img src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/ui/elite/@(eIndex).png" alt="E@eIndex" />
+                        </button>
+                    }
+                </div>
+
+                <!-- Potential indicator -->
+                <div class="od-potential">
+                    <span class="od-potential-label">Potential</span>
+                    <div class="od-potential-dots">
+                        @for (int p = 0; p < 6; p++)
+                        {
+                            var potIndex = p;
+                            <span class="od-pot-dot @(selectedPotential >= potIndex ? "active" : "")"
+                                  @onclick="() => selectedPotential = potIndex"
+                                  title="Potential @(potIndex + 1)"></span>
+                        }
+                    </div>
+                    @if (op.PotentialRanks != null && op.PotentialRanks.Count > selectedPotential && selectedPotential > 0)
+                    {
+                        <div class="od-pot-desc">@op.PotentialRanks[selectedPotential].Description</div>
+                    }
+                    else
+                    {
+                        <div class="od-pot-desc">Pot @(selectedPotential + 1)</div>
+                    }
+                </div>
+            </div>
+
+            <!-- SKILL SECTION -->
+            @if (skills != null && skills.Count > 0)
+            {
+                <div class="od-skill-section">
+                    <div class="od-section-label">▲ Skill</div>
+
+                    <!-- Skill Tabs (chọn skill 1/2/3) -->
+                    <div class="od-skill-tabs">
+                        @for (int i = 0; i < skills.Count; i++)
+                        {
+                            var sIdx = i;
+                            var sk = skills[sIdx];
+                            var firstLvl = sk.Levels?.FirstOrDefault();
+                            <div class="od-skill-tab @(selectedSkill == sIdx ? "od-skill-tab-active" : "")"
+                                 @onclick="() => SelectSkill(sIdx)">
+                                <img class="od-skill-tab-icon" src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" />
+                                @if (firstLvl != null)
+                                {
+                                    <span class="od-skill-sp">▶@firstLvl.InitSp ⚡@firstLvl.SpCost</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Skill Detail Card -->
+                    @{
+                        var currentLvl = GetCurrentSkillLevel();
+                        var currentSkill = selectedSkill < skills.Count ? skills[selectedSkill] : null;
+                    }
+                    @if (currentLvl != null && currentSkill != null)
+                    {
+                        <div class="od-skill-card">
+                            <!-- Skill Level Selector (Level 1-7, Mastery 1-3) -->
+                            <div class="od-skill-level-row">
+                                <span class="od-skill-level-label">Lv</span>
+                                <div class="od-skill-lvl-dots">
+                                    @for (int l = 0; l < Math.Min(7, currentSkill.Levels.Count); l++)
+                                    {
+                                        var lvlIdx = l;
+                                        <span class="od-lvl-dot @(selectedSkillLevel == lvlIdx ? "active" : "")"
+                                              @onclick="() => selectedSkillLevel = lvlIdx">@(lvlIdx + 1)</span>
+                                    }
+                                    @if (currentSkill.Levels.Count > 7)
+                                    {
+                                        <span class="od-lvl-separator"></span>
+                                        @for (int m = 7; m < currentSkill.Levels.Count; m++)
+                                        {
+                                            var mIdx = m;
+                                            var mNum = m - 6;
+                                            <span class="od-lvl-dot mastery @(selectedSkillLevel == mIdx ? "active" : "")"
+                                                  @onclick="() => selectedSkillLevel = mIdx">M@(mNum)</span>
+                                        }
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Skill Header -->
+                            <div class="od-skill-header">
+                                <img class="od-skill-icon-sm" src="@GetSkillImageUrl(currentSkill.IconId ?? currentSkill.SkillId)" />
+                                <div class="od-skill-meta">
+                                    <span class="od-skill-name">@currentLvl.Name</span>
+                                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                        @if (!string.IsNullOrEmpty(currentSkill.SkillType))
+                                        {
+                                            <span class="od-sp-type-badge">@currentSkill.SkillType</span>
+                                        }
+                                        @if (currentLvl.Duration > 0)
+                                        {
+                                            <span class="od-duration-badge">⏱ @(currentLvl.Duration)s</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Skill Stats -->
+                            <div class="od-skill-stats">
+                                <span class="od-skill-stat-item">SP: <b>@currentLvl.SpCost</b></span>
+                                <span class="od-skill-stat-item">Init: <b>@(currentLvl.InitSp ?? 0)</b></span>
+                                @if (currentLvl.Duration > 0)
+                                {
+                                    <span class="od-skill-stat-item">Duration: <b>@(currentLvl.Duration)s</b></span>
+                                }
+                            </div>
+
+                            <!-- Skill Description -->
+                            <p class="od-skill-desc">@CleanDescription(currentLvl.Description)</p>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- TALENT SECTION -->
+            @if (op.Talents != null && op.Talents.Count > 0)
+            {
+                <div class="od-talent-section">
+                    <div class="od-section-label">Talents</div>
+                    @foreach (var talent in op.Talents)
+                    {
+                        var candidate = GetActiveTalentCandidate(talent);
+                        if (candidate != null && (!string.IsNullOrEmpty(candidate.Name) || !string.IsNullOrEmpty(candidate.Description)))
+                        {
+                            <div class="od-talent-item">
+                                <div class="od-talent-name">@candidate.Name</div>
+                                @if (candidate.UnlockCondition != null)
+                                {
+                                    <div class="od-talent-unlock">
+                                        Unlocked at @FormatPhase(candidate.UnlockCondition.Phase) Lv @candidate.UnlockCondition.Level
+                                        @if (candidate.RequiredPotentialRank > 0)
+                                        {
+                                            <span> (Pot @(candidate.RequiredPotentialRank + 1))</span>
+                                        }
+                                    </div>
+                                }
+                                <p class="od-talent-desc">@CleanDescription(candidate.Description)</p>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+
+            <!-- MODULE SECTION -->
+            <div class="od-module-section">
+                <div class="od-section-label">Module</div>
+                <div class="od-talent-item" style="border-left-color: #60a5fa;">
+                    <div class="od-talent-name">ORIGINAL</div>
+                    <p class="od-talent-desc">Default base class module attributes.</p>
+                </div>
+            </div>
+
+        </aside>
+    </div>
 }
 
 @code {
@@ -261,8 +403,12 @@ else
             op = await service.GetByIdAsync(Id);
 
             selectedSkill = 0;
+            elite = 0;
+            displayElite = 0;
+            currentBgUrl = GetImageUrl(Id, displayElite);
+            currentLevel = op.Phases[elite].MaxLevel;
 
-            Logger.LogInformation("Found operator: {OperatorName} with description: {OperatorDescription}", op?.Name, op?.Description);
+            Logger.LogInformation("Found operator: {OperatorName} with description: {OperatorDescription} and id: {Id}", op?.Name, op?.Description, op?.Id);
 
             if (op != null)
                 skills = await service.GetSkillsForOperatorAsync(op);
@@ -274,25 +420,187 @@ else
         }
     }
     private int elite = 0;
+    private int displayElite = 0;
+    private string currentBgUrl = "";
     private bool showLightbox = false;
+    private int currentLevel;
+    private int selectedTrust = 200;
 
-    private string GetImageUrl(string id) => elite switch
+    private void OnTrustChanged(ChangeEventArgs e)
     {
-        0 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_1.png",
-        1 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_1.png",
-        2 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_2.png",
-        _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/characters/{id}/{id}_2.png"
+        if (int.TryParse(e.Value?.ToString(), out var value))
+        {
+            selectedTrust = value;
+        }
+    }
+
+    private string GetImageUrl(string id, int eliteLevel) => eliteLevel switch
+    {
+        0 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1.png",
+        1 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1%2B.png",
+        2 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_2.png",
+        _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png"//https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_2.png
     };
 
-    private int selectedSkill = 0;
+    private void OnImageError()
+    {
+        if (displayElite > 0)
+        {
+            displayElite--;
+        }
+        else
+        {
+            currentBgUrl = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png";
+        }
+    }
 
-    private string GetSkillImageUrl(string? id) => !string.IsNullOrEmpty(id) ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/skills/skill_icon_{Uri.EscapeDataString(id)}.png" : "/assets/icons/charattrdetail/sprite_profession.png";
-    
-    private Stats? GetCurrentStats()
+    private void OnEliteChanged(int newElite)
+    {
+        elite = newElite;         // đổi stat, đổi active button
+        displayElite = newElite;  // reset thử lại ảnh ở đúng elite mới trước
+    }
+
+    private int selectedSkill = 0;
+    private int selectedSkillLevel = 0;
+    private int selectedPotential = 0;
+
+    private void SelectSkill(int index)
+    {
+        selectedSkill = index;
+        selectedSkillLevel = 0;
+    }
+
+    private SkillLevelResponse? GetCurrentSkillLevel()
+    {
+        if (skills == null || skills.Count == 0 || selectedSkill >= skills.Count) return null;
+        var s = skills[selectedSkill];
+        if (s.Levels == null || s.Levels.Count == 0) return null;
+        var idx = Math.Clamp(selectedSkillLevel, 0, s.Levels.Count - 1);
+        return s.Levels[idx];
+    }
+
+    private TalentCandidate? GetActiveTalentCandidate(Talent talent)
+    {
+        if (talent.Candidates == null || talent.Candidates.Count == 0) return null;
+        return talent.Candidates
+            .Where(c => (c.UnlockCondition?.Phase == null || PhaseToInt(c.UnlockCondition.Phase) <= elite)
+                     && c.RequiredPotentialRank <= selectedPotential)
+            .LastOrDefault() ?? talent.Candidates.FirstOrDefault();
+    }
+
+    private int PhaseToInt(string? phase) => phase switch
+    {
+        "PHASE_0" => 0,
+        "PHASE_1" => 1,
+        "PHASE_2" => 2,
+        _ => 0
+    };
+
+    private string GetSkillImageUrl(string? id) => !string.IsNullOrEmpty(id) ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/skills/skill_icon_{id}.png" : "/assets/icons/characterdetail/sprite_profession.png";
+
+    private Stats? GetPhaseMaxStats()
     {
         if (op?.Phases == null || op.Phases.Count == 0) return null;
         var phase = op.Phases[Math.Min(elite, op.Phases.Count - 1)];
-        return phase.AttributesKeyFrames?.LastOrDefault()?.Data;
+        var stats = phase.AttributesKeyFrames?.LastOrDefault()?.Data;
+        Logger.LogInformation("Max lv {lv}", phase.AttributesKeyFrames.LastOrDefault().Level);
+        return stats;
+    }
+
+    private Stats GetPhaseMinStats()
+    {
+        if (op?.Phases == null || op.Phases.Count == 0) return null;
+        var phase = op.Phases[Math.Min(elite, op.Phases.Count - 1)];
+        var stats = phase.AttributesKeyFrames?.FirstOrDefault()?.Data;
+        Logger.LogInformation("Min lv {lv}", phase.AttributesKeyFrames.FirstOrDefault().Level);
+        return stats;
+    }
+
+    private Stats GetRawStat()
+    {
+        var max = GetPhaseMaxStats();
+        var min = GetPhaseMinStats();
+        var phase = op.Phases[Math.Min(elite, op.Phases.Count - 1)];
+
+        var t = (double)(currentLevel - 1) / (phase.MaxLevel - 1);
+
+        var stats = new Stats
+            {
+                MaxHp = (int)Lerp(min.MaxHp, max.MaxHp, t),
+                Atk = (int)Lerp(min.Atk, max.Atk, t),
+                Def = (int)Lerp(min.Def, max.Def, t),
+                MagicResistance = (int)Lerp(min.MagicResistance, max.MagicResistance, t),
+                Cost = max.Cost,
+                BlockCnt = max.BlockCnt,
+                RespawnTime = max.RespawnTime
+            };
+
+        return stats;
+    }
+
+    private static double Lerp(double a, double b, double t)
+    {
+        return a + (b - a) * t;
+    }
+
+    private Stats GetTrustBonus(int trust)
+    {
+        if (op?.TrustBonus == null || op.TrustBonus.Count < 2)
+            return new Stats();
+
+        // Trust bonus max 100%
+        trust = Math.Clamp(trust, 0, 100);
+
+        var min = op.TrustBonus.First();
+        var max = op.TrustBonus.Last();
+
+        // 0% -> favor level 0
+        // 100% -> favor level 50
+        var favorLevel = trust * max.Level / 100.0;
+
+        var t = (favorLevel - min.Level) /
+                (max.Level - min.Level);
+
+        return new Stats
+        {
+            MaxHp = (int)Lerp(
+                min.Data?.MaxHp ?? 0,
+                max.Data?.MaxHp ?? 0,
+                t),
+
+            Atk = (int)Lerp(
+                min.Data?.Atk ?? 0,
+                max.Data?.Atk ?? 0,
+                t),
+
+            Def = (int)Lerp(
+                min.Data?.Def ?? 0,
+                max.Data?.Def ?? 0,
+                t),
+
+            MagicResistance = (int)Lerp(
+                min.Data?.MagicResistance ?? 0,
+                max.Data?.MagicResistance ?? 0,
+                t)
+        };
+    }
+
+    private Stats GetStatsAtTrust(Stats raw, int trust)
+    {
+        var bonus = GetTrustBonus(trust);
+
+        return new Stats
+        {
+            MaxHp = raw.MaxHp + bonus.MaxHp,
+            Atk = raw.Atk + bonus.Atk,
+            Def = raw.Def + bonus.Def,
+            MagicResistance =
+                raw.MagicResistance + bonus.MagicResistance,
+
+            Cost = raw.Cost,
+            BlockCnt = raw.BlockCnt,
+            RespawnTime = raw.RespawnTime
+        };
     }
 
     private string FormatRarity(string? r)
@@ -322,4 +630,16 @@ else
     private string CleanDescription(string? desc)
         => string.IsNullOrEmpty(desc) ? "" : System.Text.RegularExpressions.Regex.Replace(desc, @"<[^>]+>", "");
 
+    private string GetClassIconUrl(string? p) => p switch
+    {
+        "PIONEER" => "/assets/icons/classes/class_vanguard.png",
+        "WARRIOR" => "/assets/icons/classes/class_guard.png",
+        "TANK" => "/assets/icons/classes/class_defender.png",
+        "SNIPER" => "/assets/icons/classes/class_sniper.png",
+        "CASTER" => "/assets/icons/classes/class_caster.png",
+        "MEDIC" => "/assets/icons/classes/class_medic.png",
+        "SUPPORT" => "/assets/icons/classes/class_supporter.png",
+        "SPECIAL" => "/assets/icons/classes/class_specialist.png",
+        _ => "/assets/icons/classes/class_caster.png"
+    };
 }

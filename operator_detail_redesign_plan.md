@@ -647,7 +647,7 @@ private int PhaseToInt(string? phase) => phase switch
 };
 ```
 
-### 4. GetArtworkUrl (dùng cho background)
+### 4. GetArtworkUrl (dùng cho background) (vẫn dùng GetImageUrl nhưng đổi từ en -> cn)
 ```csharp
 private string GetArtworkUrl(string id) => elite == 2
     ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_2.png"

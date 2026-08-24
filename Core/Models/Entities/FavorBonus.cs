@@ -16,4 +16,10 @@ public class FavorBonusData
 
     [JsonPropertyName("atk")]
     public int Atk { get; set; }
+
+    [JsonPropertyName("def")]
+    public int Def { get; set; }
+
+    [JsonPropertyName("magicResistance")]
+    public double MagicResistance { get; set; }
 }
