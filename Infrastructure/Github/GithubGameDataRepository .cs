@@ -181,6 +181,15 @@ namespace Infrastructure.Github
         //    return response[id];
         //}
 
+        public async Task<Dictionary<string, RangeData>?> GetRangeTableAsync()
+        {
+            string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "range_table.json");
+            var url = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/range_table.json";
+
+            var response = await LoadTableAsync<RangeData>(localpath, url);
+            return response;
+        }
+
         public async Task ResetCache()
         {
             string localpath1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table.json");

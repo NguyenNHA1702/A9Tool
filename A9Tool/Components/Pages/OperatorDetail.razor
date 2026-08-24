@@ -1,6 +1,7 @@
 @page "/operators/{Id}"
 @using Core.Github.DTOs.Response
 @using Core.DTOs.Response
+@using Core.Helpers
 @using Core.Models.Entities
 @inject Core.Services.CharacterService service
 @inject NavigationManager Nav
@@ -78,19 +79,19 @@ else
                 <!-- Stat rows -->
                 @{
                     var stats = GetStatsAtTrust(GetRawStat(), selectedTrust);
-                        Logger.LogInformation(
-                    "Current stat for {opName}(Trust: {trust}): E{elite} LV: {level}, MaxHP: {maxHp}, ATK: {atk}, DEF: {def}, RES: {res}, Cost: {cost}, Block: {block}, Redeploy: {redeploy}",
-                        op.Name,
-                        selectedTrust,
-                        elite,
-                        currentLevel,
-                        stats.MaxHp,
-                        stats.Atk,
-                        stats.Def,
-                        stats.MagicResistance,
-                        stats.Cost,
-                        stats.BlockCnt,
-                        stats.RespawnTime );
+                    Logger.LogInformation(
+                "Current stat for {opName}(Trust: {trust}): E{elite} LV: {level}, MaxHP: {maxHp}, ATK: {atk}, DEF: {def}, RES: {res}, Cost: {cost}, Block: {block}, Redeploy: {redeploy}",
+                    op.Name,
+                    selectedTrust,
+                    elite,
+                    currentLevel,
+                    stats.MaxHp,
+                    stats.Atk,
+                    stats.Def,
+                    stats.MagicResistance,
+                    stats.Cost,
+                    stats.BlockCnt,
+                    stats.RespawnTime);
                 }
                 <div class="od-stat-row">
                     <img src="/assets/icons/characterdetail/icon_hp.png" />
@@ -192,7 +193,7 @@ else
 
                 <!-- SubProf + Position + Tags -->
                 <div class="od-op-meta">
-                    <img class="od-subprof-icon" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png"/>
+                    <img class="od-subprof-icon" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png" />
                     <span class="od-position-badge">@op.Position</span>  <!-- bind: op.Position -->
                     <span class="od-class-badge">@FormatProfession(op.Profession)</span>     <!-- bind: FormatProfession -->
                 </div>
@@ -210,6 +211,32 @@ else
                         }
                     </div>
                 }
+
+                @if (activeRangeData != null){
+                <!-- ATK range -->
+                <div class="od-attack-range">
+                    <!-- Header -->
+                    <div class="od-range-header">
+                        <span class="od-range-title">Range</span>
+                        <span class="od-range-id-badge">@activeRangeData.Id</span>
+                    </div>
+
+                    <div class="od-range-grid-container"
+                         style="grid-template-columns: repeat(@activeRangeMatrix?.ColumnCount, 16px);
+                        grid-template-rows: repeat(@activeRangeMatrix?.RowCount, 16px);">
+                        @for (int r = 0; r < activeRangeMatrix?.RowCount; r++)
+                        {
+                            @for (int c = 0; c < activeRangeMatrix.ColumnCount; c++)
+                            {
+                                var cellType = activeRangeMatrix.GetCellType(r, c);
+                                <div class="od-range-tile @cellType" title="[@activeRangeMatrix.GetRowCoord(r), @activeRangeMatrix.GetColCoord(c)]">
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+                }
+
             </div>
         </div>
 
@@ -294,7 +321,7 @@ else
                                     {
                                         var lvlIdx = l;
                                         <span class="od-lvl-dot @(selectedSkillLevel == lvlIdx ? "active" : "")"
-                                              @onclick="() => selectedSkillLevel = lvlIdx">@(lvlIdx + 1)</span>
+                                              @onclick="() => OnSkillLevelChanged(lvlIdx)">@(lvlIdx + 1)</span>
                                     }
                                     @if (currentSkill.Levels.Count > 7)
                                     {
@@ -304,7 +331,7 @@ else
                                             var mIdx = m;
                                             var mNum = m - 6;
                                             <span class="od-lvl-dot mastery @(selectedSkillLevel == mIdx ? "active" : "")"
-                                                  @onclick="() => selectedSkillLevel = mIdx">M@(mNum)</span>
+                                                  @onclick="() => OnSkillLevelChanged(mIdx)">M@(mNum)</span>
                                         }
                                     }
                                 </div>
@@ -340,6 +367,31 @@ else
 
                             <!-- Skill Description -->
                             <p class="od-skill-desc">@CleanDescription(currentLvl.Description)</p>
+
+                            <!-- Skill Range (nếu skill có RangeId riêng) -->
+                            @if (!string.IsNullOrEmpty(currentLvl.RangeId) && activeSkillRangeMatrix != null)
+                            {
+                                <div class="od-skill-range">
+                                    <div class="od-range-header">
+                                        <span class="od-range-title">Range</span>
+                                        <span class="od-range-id-badge">@currentLvl.RangeId</span>
+                                    </div>
+                                    <div class="od-range-grid-container"
+                                         style="grid-template-columns: repeat(@activeSkillRangeMatrix.ColumnCount, 14px);
+                                                grid-template-rows: repeat(@activeSkillRangeMatrix.RowCount, 14px);">
+                                        @for (int r = 0; r < activeSkillRangeMatrix.RowCount; r++)
+                                        {
+                                            @for (int c = 0; c < activeSkillRangeMatrix.ColumnCount; c++)
+                                            {
+                                                var cellType = activeSkillRangeMatrix.GetCellType(r, c);
+                                                <div class="od-range-tile @cellType"
+                                                     title="[@activeSkillRangeMatrix.GetRowCoord(r), @activeSkillRangeMatrix.GetColCoord(c)]">
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
@@ -396,6 +448,11 @@ else
 
     private List<SkillsForOperatorResponse> skills = new();
 
+    private RangeData? activeRangeData;       // Range của Operator (Phase)
+    private RangeMatrix? activeRangeMatrix;
+    private RangeData? activeSkillRangeData;  // Range của Skill level hiện tại
+    private RangeMatrix? activeSkillRangeMatrix;
+
     protected override async Task OnParametersSetAsync()
     {
         try
@@ -407,6 +464,8 @@ else
             displayElite = 0;
             currentBgUrl = GetImageUrl(Id, displayElite);
             currentLevel = op.Phases[elite].MaxLevel;
+
+            await UpdateRangeAsync();
 
             Logger.LogInformation("Found operator: {OperatorName} with description: {OperatorDescription} and id: {Id}", op?.Name, op?.Description, op?.Id);
 
@@ -454,20 +513,51 @@ else
         }
     }
 
-    private void OnEliteChanged(int newElite)
+    private async Task OnEliteChanged(int newElite)
     {
-        elite = newElite;         // đổi stat, đổi active button
-        displayElite = newElite;  // reset thử lại ảnh ở đúng elite mới trước
+        elite = newElite;
+        displayElite = newElite;
+        await UpdateRangeAsync();
     }
 
     private int selectedSkill = 0;
     private int selectedSkillLevel = 0;
     private int selectedPotential = 0;
 
-    private void SelectSkill(int index)
+    private async Task SelectSkill(int index)
     {
         selectedSkill = index;
         selectedSkillLevel = 0;
+        await UpdateRangeAsync();
+    }
+
+    private async Task OnSkillLevelChanged(int lvlIdx)
+    {
+        selectedSkillLevel = lvlIdx;
+        await UpdateRangeAsync();
+    }
+
+    private async Task UpdateRangeAsync()
+    {
+        if (op == null) return;
+
+        // 1. Operator range: luôn lấy từ Phase
+        var phaseRangeId = op.Phases[Math.Min(elite, op.Phases.Count - 1)].RangeId;
+        activeRangeData = await service.GetRangeDataAsync(phaseRangeId);
+        activeRangeMatrix = RangeMatrix.Create(activeRangeData);
+
+        // 2. Skill range: chỉ lấy khi skill level có RangeId riêng
+        var skillLvl = GetCurrentSkillLevel();
+        if (!string.IsNullOrEmpty(skillLvl?.RangeId))
+        {
+            activeSkillRangeData = await service.GetRangeDataAsync(skillLvl.RangeId);
+            activeSkillRangeMatrix = RangeMatrix.Create(activeSkillRangeData);
+        }
+        else
+        {
+            activeSkillRangeData = null;
+            activeSkillRangeMatrix = null;
+        }
     }
 
     private SkillLevelResponse? GetCurrentSkillLevel()
@@ -525,15 +615,15 @@ else
         var t = (double)(currentLevel - 1) / (phase.MaxLevel - 1);
 
         var stats = new Stats
-            {
-                MaxHp = (int)Lerp(min.MaxHp, max.MaxHp, t),
-                Atk = (int)Lerp(min.Atk, max.Atk, t),
-                Def = (int)Lerp(min.Def, max.Def, t),
-                MagicResistance = (int)Lerp(min.MagicResistance, max.MagicResistance, t),
-                Cost = max.Cost,
-                BlockCnt = max.BlockCnt,
-                RespawnTime = max.RespawnTime
-            };
+        {
+            MaxHp = (int)Lerp(min.MaxHp, max.MaxHp, t),
+            Atk = (int)Lerp(min.Atk, max.Atk, t),
+            Def = (int)Lerp(min.Def, max.Def, t),
+            MagicResistance = (int)Lerp(min.MagicResistance, max.MagicResistance, t),
+            Cost = max.Cost,
+            BlockCnt = max.BlockCnt,
+            RespawnTime = max.RespawnTime
+        };
 
         return stats;
     }

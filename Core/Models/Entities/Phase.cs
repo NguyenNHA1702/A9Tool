@@ -1,7 +1,10 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 public class Phase
 {
+    [JsonPropertyName("rangeId")]
+    public string? RangeId { get; set; }
+
     [JsonPropertyName("maxLevel")]
     public int MaxLevel { get; set; }
 

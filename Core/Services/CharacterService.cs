@@ -1,4 +1,4 @@
-﻿using Core.DTOs.Response;
+using Core.DTOs.Response;
 using Core.Github.DTOs.Response;
 using Core.Interfaces;
 using Core.Models.Entities;
@@ -125,6 +125,17 @@ namespace Core.Services
         public async Task ResetCache()
         {
             await _gameDataRepository.ResetCache();
+        }
+
+        public async Task<RangeData?> GetRangeDataAsync(string? rangeId)
+        {
+            if (string.IsNullOrEmpty(rangeId)) return null;
+            var table = await _gameDataRepository.GetRangeTableAsync();
+            if (table != null && table.TryGetValue(rangeId, out var data))
+            {
+                return data;
+            }
+            return null;
         }
     }
 }
