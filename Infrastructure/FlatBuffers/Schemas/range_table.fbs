@@ -1,0 +1,21 @@
+// Auto-created range_table.fbs for Arknights RangeData
+table clz_Torappu_GridPosition {
+    row: int;
+    col: int;
+}
+
+table clz_Torappu_RangeData {
+    id: string;
+    grids: [clz_Torappu_GridPosition];
+}
+
+table dict__string__clz_Torappu_RangeData {
+    key: string(key);
+    value: clz_Torappu_RangeData;
+}
+
+table clz_Torappu_SimpleKVTable_clz_Torappu_RangeData {
+    ranges: [dict__string__clz_Torappu_RangeData];
+}
+
+root_type clz_Torappu_SimpleKVTable_clz_Torappu_RangeData;

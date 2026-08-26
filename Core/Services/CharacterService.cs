@@ -101,7 +101,21 @@ namespace Core.Services
 
             foreach (var bb in blackboard)
             {
-                var value = bb.ValueStr ?? FormatValue((double)bb.Value);
+                if (string.IsNullOrEmpty(bb.Key)) continue;
+
+                string value;
+                if (!string.IsNullOrEmpty(bb.ValueStr))
+                {
+                    value = bb.ValueStr;
+                }
+                else if (bb.Value.HasValue)
+                {
+                    value = FormatValue(bb.Value.Value);
+                }
+                else
+                {
+                    value = "";
+                }
 
                 description = description.Replace(bb.Key, value);
             }
