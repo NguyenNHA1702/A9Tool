@@ -206,18 +206,12 @@ namespace Infrastructure.Github
 
             if (root.ValueKind == JsonValueKind.Object)
             {
-                // Check if JSON has a KV wrapper property: "characters", "skills", "range"
-                if (root.TryGetProperty("characters", out var charArray) && charArray.ValueKind == JsonValueKind.Array)
+                foreach (var prop in root.EnumerateObject())
                 {
-                    return ConvertKVArrayToDictionary<T>(charArray, opts);
-                }
-                if (root.TryGetProperty("skills", out var skillArray) && skillArray.ValueKind == JsonValueKind.Array)
-                {
-                    return ConvertKVArrayToDictionary<T>(skillArray, opts);
-                }
-                if (root.TryGetProperty("range", out var rangeArray) && rangeArray.ValueKind == JsonValueKind.Array)
-                {
-                    return ConvertKVArrayToDictionary<T>(rangeArray, opts);
+                    if (prop.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        return ConvertKVArrayToDictionary<T>(prop.Value, opts);
+                    }
                 }
 
                 // Standard dictionary JSON format
@@ -500,9 +494,10 @@ namespace Infrastructure.Github
             string localpath1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table.json");
             string localpath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json");
             string localpath3 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
-            string localpath4 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "range_table.json");
+            // NOTE: range_table.json là dữ liệu tĩnh (72 entries, không thay đổi theo bản game).
+            // File .bytes trên repo mới không decode được qua flatc nên KHÔNG xóa local cache.
 
-            _logger.LogInformation("[ResetCache] Resetting local data cache...");
+            _logger.LogInformation("[ResetCache] Resetting local data cache (character, skill). Range table is static and will NOT be cleared.");
 
             if (File.Exists(localpath1))
             {
@@ -519,16 +514,13 @@ namespace Infrastructure.Github
                 File.Delete(localpath3);
                 _logger.LogInformation("[ResetCache] Deleted local cache: skill_table.json");
             }
-            if (File.Exists(localpath4))
-            {
-                File.Delete(localpath4);
-                _logger.LogInformation("[ResetCache] Deleted local cache: range_table.json");
-            }
 
             _logger.LogInformation("[ResetCache] Fetching fresh data from GitHub...");
             await GetCharactersAsync();
             await GetSkillTableAsync();
-            await GetRangeTableAsync();
+            // NOTE: Không gọi GetRangeTableAsync() ở đây vì range_table dùng local cache tĩnh,
+            // không fetch qua flatc để tránh crash exit code -1073741819.
+            _logger.LogInformation("[ResetCache] Cache reset complete.");
         }
     }
 }
