@@ -1814,7 +1814,18 @@ html, body {
 }
 
 .od-mod-title { font-size: 0.8rem; font-weight: 700; color: #e0e0e0; }
-.od-mod-desc { font-size: 0.72rem; color: #888; margin: 0; line-height: 1.4; }
+.od-mod-desc {
+    font-size: 0.72rem;
+    color: #888;
+    margin: 0;
+    line-height: 1.4;
+    /* Clamp to 2 lines outside modal */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 .od-mod-footer-row {
     display: flex;
@@ -1870,20 +1881,26 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .od-branch-summary {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
-.od-branch-summary-name { font-size: 0.78rem; font-weight: 700; color: #e0e0e0; }
+.od-branch-summary-name { font-size: 0.78rem; font-weight: 700; color: #e0e0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .od-module-summary-slots {
     display: flex;
     gap: 4px;
+    flex-shrink: 0;
 }
 
 .od-mod-mini-box {
@@ -1899,8 +1916,26 @@ html, body {
 .od-mod-mini-box img { width: 16px; height: 16px; object-fit: contain; }
 .od-mod-mini-box.active { border-color: #60a5fa; color: #fff; }
 
-.od-module-summary-stage { font-size: 0.68rem; color: #888; display: flex; align-items: center; gap: 4px; }
-.od-manage-btn { color: #aaa; font-weight: 700; }
+/* Collapsed view stage+manage pill */
+.od-module-summary-stage {
+    font-size: 0.68rem;
+    color: #888;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Lightweight "Manage +" text label in collapsed view */
+.od-manage-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #38bdf8;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+}
 
 .od-talent-pill-bar {
     margin-top: 8px;
@@ -2049,4 +2084,645 @@ html, body {
     }
     .od-bg-layer { position: fixed; }
     .od-op-name { font-size: 2rem; }
+}
+
+/* ================================================================
+   Module Details Modal Styling
+   ================================================================ */
+.od-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: odModalFadeIn 0.25s ease-out;
+}
+
+@keyframes odModalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.od-mod-modal-card {
+    background: linear-gradient(145deg, rgba(20, 22, 32, 0.95), rgba(12, 14, 22, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 168, 255, 0.1);
+    width: 100%;
+    max-width: 580px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: #e2e8f0;
+    animation: odModalCardSlide 0.25s ease-out;
+}
+
+@keyframes odModalCardSlide {
+    from { transform: translateY(15px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.od-mod-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.od-mod-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.od-mod-modal-icon {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+.od-mod-modal-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+.od-mod-modal-tags {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.od-mod-type-badge {
+    background: rgba(0, 168, 255, 0.15);
+    border: 1px solid rgba(0, 168, 255, 0.35);
+    color: #38bdf8;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.od-mod-subprof-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 4px;
+}
+
+.od-modal-close-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.od-modal-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.od-mod-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.od-mod-desc-box {
+    background: rgba(0, 0, 0, 0.25);
+    border-left: 3px solid #38bdf8;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.od-mod-desc-box p {
+    margin: 0;
+}
+
+/* Stage Selector Bar */
+.od-mod-stage-bar {
+    display: flex;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.od-mod-stage-tab {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.od-mod-stage-tab:hover {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.od-mod-stage-tab.active {
+    background: linear-gradient(135deg, rgba(0, 168, 255, 0.25), rgba(0, 100, 200, 0.35));
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    box-shadow: 0 2px 10px rgba(0, 168, 255, 0.2);
+}
+
+/* Sections */
+.od-mod-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.od-mod-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* Base Stat Pills */
+.od-mod-stat-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.od-mod-stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+.od-mod-stat-key {
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.od-mod-stat-val {
+    color: #4ade80;
+    font-weight: 700;
+}
+
+/* Enhancement Boxes */
+.od-mod-enhancement-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+    padding: 12px 14px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.od-mod-talent-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #fdb932;
+    margin-bottom: 2px;
+}
+
+.od-mod-enhancement-desc {
+    font-size: 0.82rem;
+    color: #e2e8f0;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.od-mod-enhancement-subdesc {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    line-height: 1.4;
+    margin: 2px 0 0 0;
+}
+
+/* Unlock Requirements */
+.od-mod-unlock-box {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(30, 41, 59, 0.6);
+    padding: 12px 14px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.8rem;
+}
+
+.od-mod-req-chip {
+    color: #cbd5e1;
+}
+
+.od-mod-req-label {
+    color: #94a3b8;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.od-mod-mission-list {
+    margin-top: 4px;
+}
+
+.od-mod-mission-list ul {
+    margin: 4px 0 0 18px;
+    padding: 0;
+    color: #cbd5e1;
+}
+
+.od-mod-mission-list li {
+    margin-bottom: 4px;
+}
+
+.od-mod-no-stat {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.85rem;
+    padding: 20px;
+}
+
+/* Stat bonus badge in Left Panel */
+.od-mod-bonus-badge {
+    color: #38bdf8;
+    font-weight: 700;
+    font-size: 0.82rem;
+    margin-left: 4px;
+}
+
+/* Remade View Details Button (Theme Gold) */
+.od-manage-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(253, 185, 50, 0.18), rgba(217, 119, 6, 0.28));
+    border: 1px solid rgba(253, 185, 50, 0.6);
+    color: #fdb932;
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 14px rgba(253, 185, 50, 0.2);
+    text-transform: uppercase;
+}
+
+.od-manage-btn:hover {
+    background: linear-gradient(135deg, rgba(253, 185, 50, 0.38), rgba(245, 158, 11, 0.55));
+    border-color: #ffc700;
+    color: #ffffff;
+    box-shadow: 0 0 22px rgba(253, 185, 50, 0.45);
+    transform: translateY(-1px);
+}
+
+/* Wiki-Style Centered Large Modal */
+.od-mod-modal-card.wiki-style {
+    max-width: 960px;
+    width: 92vw;
+    max-height: 90vh;
+    background: #12151e;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 168, 255, 0.15);
+}
+
+.od-mod-type-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.od-mod-header-title-box {
+    display: flex;
+    flex-direction: column;
+}
+
+.od-mod-code-badge {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #38bdf8;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.od-mod-wiki-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .od-mod-wiki-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.od-mod-wiki-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.od-mod-art-container {
+    width: 140px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.od-mod-large-art {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
+}
+
+.od-mod-wiki-lore-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    width: 100%;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+}
+
+.od-mod-wiki-lore {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    text-align: left;
+    width: 100%;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+/* Module type chip inside left column */
+.od-mod-type-chip {
+    display: inline-block;
+    margin-top: 10px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+/* Full-width description row below wiki grid */
+.od-mod-wiki-desc-row {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 3px solid rgba(56, 189, 248, 0.5);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.od-mod-wiki-desc-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.od-mod-wiki-desc-text {
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    line-height: 1.55;
+    /* allow scroll only if extremely long */
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.od-mod-wiki-right {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Stacked Stage Card */
+.od-mod-stage-card {
+    display: flex;
+    background: rgba(20, 26, 38, 0.7);
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.od-mod-stage-badge {
+    width: 54px;
+    min-width: 54px;
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+    border-right: 1px solid rgba(51, 65, 85, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+}
+
+.od-stage-num {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #38bdf8;
+    line-height: 1;
+}
+
+.od-stage-sub {
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.od-mod-stage-content {
+    padding: 12px 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.od-mod-stage-block {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.od-mod-block-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.od-mod-block-label.trait { color: #38bdf8; }
+.od-mod-block-label.talent { color: #fdb932; }
+.od-mod-block-label.attr { color: #4ade80; }
+.od-mod-block-label.range { color: #c084fc; }
+
+.od-mod-block-text {
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.od-mod-block-text.sub {
+    color: #94a3b8;
+    font-size: 0.76rem;
+}
+
+.od-mod-attr-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+}
+
+.od-mod-attr-item {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+}
+
+.od-mod-attr-item .val {
+    color: #4ade80;
+}
+
+.od-range-grid-container.mini {
+    gap: 1px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    width: fit-content;
+}
+
+/* Bottom Grid for Missions & Unlock Conditions */
+.od-mod-wiki-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.od-mod-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 640px) {
+    .od-mod-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.od-mod-bottom-box {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.od-mod-box-header {
+    background: rgba(30, 41, 59, 0.6);
+    padding: 8px 12px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.od-mod-box-content {
+    padding: 12px;
+    font-size: 0.78rem;
+    color: #cbd5e1;
+}
+
+.od-mod-missions-ol,
+.od-mod-unlock-ul {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.5;
+}
+
+.od-mod-missions-ol li,
+.od-mod-unlock-ul li {
+    margin-bottom: 4px;
+}
+
+/* Wiki-body modal content override */
+.od-mod-modal-body.wiki-body {
+    padding: 16px 20px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* No data placeholder */
+.od-mod-no-data {
+    color: #64748b;
+    font-size: 0.8rem;
+    font-style: italic;
 }

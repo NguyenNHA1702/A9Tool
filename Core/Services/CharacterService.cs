@@ -1,4 +1,5 @@
 using Core.DTOs.Response;
+using Core.Enums;
 using Core.Github.DTOs.Response;
 using Core.Interfaces;
 using Core.Models.Entities;
@@ -130,12 +131,17 @@ namespace Core.Services
                 return list;
             }
 
+            var shortCode = id.Contains('_') ? id.Split('_').Last() : id;
+
             list = uniEquipData.Values
-                .Where(x => (x.CharId != null && string.Equals(x.CharId, id, StringComparison.OrdinalIgnoreCase)) ||
-                            (x.UniEquipId != null && x.UniEquipId.Contains(id, StringComparison.OrdinalIgnoreCase)))
+                .Where(x => x.CharId != null && string.Equals(x.CharId, id, StringComparison.OrdinalIgnoreCase))
+                // Exclude INITIAL (default badge / ORIGINAL slot) — it is already represented by the hardcoded slot 0 in the UI.
+                .Where(x => x.Type != UniEquipType.INITIAL)
+                .OrderBy(x => x.CharEquipOrder)
+                .ThenBy(x => x.UniEquipId)
                 .ToList();
 
-            _logger.LogInformation("[GetModulesByOperatorAsync] For operator '{Id}' found {Count} module(s).", id, list.Count);
+            _logger.LogInformation("[GetModulesByOperatorAsync] For operator '{Id}' (shortCode: '{ShortCode}') found {Count} module(s).", id, shortCode, list.Count);
             foreach (var m in list)
             {
                 _logger.LogInformation(
