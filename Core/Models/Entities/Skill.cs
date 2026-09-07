@@ -54,8 +54,8 @@ namespace Core.Models.Entities
         public double Duration { get; set; }
 
         [JsonPropertyName("blackboard")]
-        [JsonConverter(typeof(FlexibleListConverter<SkillBlackboard>))]
-        public List<SkillBlackboard>? Blackboard { get; set; }
+        [JsonConverter(typeof(FlexibleListConverter<BlackboardDataPair>))]
+        public List<BlackboardDataPair>? Blackboard { get; set; }
     }
 
     public class SkillSpData
@@ -79,7 +79,7 @@ namespace Core.Models.Entities
         public double Increment { get; set; }
     }
 
-    public class SkillBlackboard
+    public class BlackboardDataPair
     {
         [JsonPropertyName("key")]
         public string? Key { get; set; }

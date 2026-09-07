@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Infrastructure.Github
@@ -246,10 +247,18 @@ namespace Infrastructure.Github
         private static Dictionary<string, CharacterDetail>? _cachedCharacterDetails;
         private static Dictionary<string, SkillDetail>? _cachedSkillTable;
         private static Dictionary<string, RangeData>? _cachedRangeTable;
+        private static Dictionary<string, UniEquipData>? _cachedUniEquipData;
+        private static Dictionary<string, BattleEquipPack>? _cachedBattleEquipData;
 
         private async Task<Dictionary<string, T>?> LoadTableAsync<T>(string localPath, string filePrefix, string schemaFileName)
         {
-            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var opts = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                // FlatBuffers JSON xuất enum dưới dạng string ("PHASE_2") hoặc integer,
+                // JsonStringEnumConverter(null) giữ nguyên tên enum (PHASE_0, PHASE_2...), allowIntegerValues: true cho phép đọc số
+                Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
+            };
 
             try
             {
@@ -287,7 +296,7 @@ namespace Infrastructure.Github
                 }
 
                 _logger.LogInformation("[FlatBuffers] Conversion successful for '{Prefix}'. Parsing JSON and saving cache to '{LocalPath}'...", filePrefix, localPath);
-                
+
                 // 4. Parse converted JSON into C# dictionary model
                 var result = ParseFlatBuffersJsonToDictionary<T>(convertedJson, opts);
 
@@ -473,13 +482,80 @@ namespace Infrastructure.Github
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[GetRangeTableAsync] Failed to read local range_table.json. Falling back to LoadTableAsync...");
+                    _logger.LogWarning(ex, "[GetRangeTableAsync] Failed to read local range_table.json cache.");
                 }
             }
 
-            var response = await LoadTableAsync<RangeData>(localpath, "range_table", "range_table.fbs");
-            _logger.LogInformation("[GetRangeTableAsync] Loaded range table entries: {Count}", response?.Count ?? 0);
-            _cachedRangeTable = response;
+            // 1. Primary Source: Try fetching from ArknightsAssets2 via FlatBuffers
+            try
+            {
+                _logger.LogInformation("[GetRangeTableAsync] Attempting to fetch range_table from primary source (ArknightsAssets2)...");
+                var response = await LoadTableAsync<RangeData>(localpath, "range_table", "range_table.fbs");
+                if (response != null && response.Count > 0)
+                {
+                    _logger.LogInformation("[GetRangeTableAsync] Successfully loaded {Count} range entries from ArknightsAssets2.", response.Count);
+                    _cachedRangeTable = response;
+                    return response;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[GetRangeTableAsync] Primary source (ArknightsAssets2) flatc conversion/download failed. Trying raw JSON fallback...");
+            }
+
+            // 2. Fallback Source: Raw JSON fetch
+            try
+            {
+                string rawJsonUrl = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/range_table.json";
+                _logger.LogInformation("[GetRangeTableAsync] Fetching raw JSON fallback: {Url}", rawJsonUrl);
+                var json = await _httpClient.GetStringAsync(rawJsonUrl);
+                var rangeDict = JsonSerializer.Deserialize<Dictionary<string, RangeData>>(json, opts);
+                if (rangeDict != null && rangeDict.Count > 0)
+                {
+                    await File.WriteAllTextAsync(localpath, json, Encoding.UTF8);
+                    _cachedRangeTable = rangeDict;
+                    _logger.LogInformation("[GetRangeTableAsync] Successfully fetched and cached {Count} range entries via fallback.", rangeDict.Count);
+                    return rangeDict;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[GetRangeTableAsync] Failed to fetch raw range_table.json fallback.");
+            }
+
+            return null;
+        }
+
+        public async Task<Dictionary<string, UniEquipData>?> GetUniEquipTableAsync()
+        {
+            if (_cachedUniEquipData != null)
+            {
+                return _cachedUniEquipData;
+            }
+
+            string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
+
+            var response = await LoadTableAsync<UniEquipData>(localpath, "uniequip_table", "uniequip_table.fbs");
+            _logger.LogInformation("[GetUniEquipTableAsync] Loaded {Count} UniEquip records. IDs: {Ids}", response?.Count, string.Join(", ", response?.Keys?.Take(5)));
+            _cachedUniEquipData = response;
+            return response;
+        }
+
+        public async Task<Dictionary<string, BattleEquipPack>?> GetBattleEquipTableAsync()
+        {
+            if (_cachedBattleEquipData != null)
+            {
+                return _cachedBattleEquipData;
+            }
+
+            string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "battle_equip_table.json");
+
+            var response = await LoadTableAsync<BattleEquipPack>(localpath, "battle_equip_table", "battle_equip_table.fbs");
+
+            _logger.LogInformation(
+                "[GetBattleEquipTableAsync] Loaded {Count} BattleEquip records. IDs: {Ids}", response?.Count, string.Join(", ", response?.Keys?.Take(5) ?? []));
+
+            _cachedBattleEquipData = response;
             return response;
         }
 
@@ -489,11 +565,15 @@ namespace Infrastructure.Github
             _cachedCharacterDetails = null;
             _cachedSkillTable = null;
             _cachedRangeTable = null;
+            _cachedUniEquipData = null;
+            _cachedBattleEquipData = null;
             _memoryDirectoryCache = null;
 
             string localpath1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table.json");
             string localpath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json");
             string localpath3 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
+            string localpath4 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
+            string localpath5 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "battle_equip_table.json");
             // NOTE: range_table.json là dữ liệu tĩnh (72 entries, không thay đổi theo bản game).
             // File .bytes trên repo mới không decode được qua flatc nên KHÔNG xóa local cache.
 
@@ -514,10 +594,22 @@ namespace Infrastructure.Github
                 File.Delete(localpath3);
                 _logger.LogInformation("[ResetCache] Deleted local cache: skill_table.json");
             }
+            if (File.Exists(localpath4))
+            {
+                File.Delete(localpath4);
+                _logger.LogInformation("[ResetCache] Deleted local cache: uniequip_table.json");
+            }
+            if (File.Exists(localpath5))
+            {
+                File.Delete(localpath5);
+                _logger.LogInformation("[ResetCache] Deleted local cache: battle_equip_table.json");
+            }
 
             _logger.LogInformation("[ResetCache] Fetching fresh data from GitHub...");
             await GetCharactersAsync();
             await GetSkillTableAsync();
+            await GetUniEquipTableAsync();
+            await GetBattleEquipTableAsync();
             // NOTE: Không gọi GetRangeTableAsync() ở đây vì range_table dùng local cache tĩnh,
             // không fetch qua flatc để tránh crash exit code -1073741819.
             _logger.LogInformation("[ResetCache] Cache reset complete.");

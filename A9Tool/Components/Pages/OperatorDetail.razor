@@ -27,9 +27,8 @@ else
              @key="elite"
              @onerror="OnImageError"
              @onload="() => currentBgUrl = GetImageUrl(Id, displayElite)" />
-    </div>
 
-    <div class="od-vignette"></div>
+        <div class="od-vignette"></div>
 
     <nav class="od-topnav">
         <button class="od-back-btn" onclick="history.back()">← Back</button>
@@ -243,199 +242,508 @@ else
         <!-- ── RIGHT PANEL: Elite/Potential/Skill/Talent/Module ── -->
         <aside class="od-panel od-panel-right">
 
-            <!-- ELITE + POTENTIAL ROW -->
-            <div class="od-ep-row">
-                <!-- Elite Icons -->
-                <div class="od-elite-icons">
-                    @for (int i = 0; i < (op.Phases?.Count ?? 1); i++)
-                    {
-                        var eIndex = i;
-                        <button class="od-elite-icon-btn @(elite == eIndex ? "active" : "")"
-                                @onclick="() => OnEliteChanged(eIndex)"
-                                title="Elite @eIndex">
-                            <img src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/ui/elite/@(eIndex).png" alt="E@eIndex" />
-                        </button>
-                    }
-                </div>
-
-                <!-- Potential indicator -->
-                <div class="od-potential">
-                    <span class="od-potential-label">Potential</span>
-                    <div class="od-potential-dots">
-                        @for (int p = 0; p < 6; p++)
+            <!-- ELITE + POTENTIAL ROW & LEVEL HEADER -->
+            <div class="od-ep-card">
+                <div class="od-ep-top">
+                    <!-- Level Circle Badge (LV 80/80 MAX) - Click mở Modal chọn Level -->
+                    <div class="od-level-circle clickable" @onclick="() => showLevelModal = true" title="Click to Change Level & Elite">
+                        <div class="od-circle-main">
+                            <span class="od-circle-lv">LV</span>
+                            <span class="od-circle-num">@currentLevel</span>
+                        </div>
+                        <span class="od-circle-max">/@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)</span>
+                        @if (currentLevel >= (op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1))
                         {
-                            var potIndex = p;
-                            <span class="od-pot-dot @(selectedPotential >= potIndex ? "active" : "")"
-                                  @onclick="() => selectedPotential = potIndex"
-                                  title="Potential @(potIndex + 1)"></span>
+                            <span class="od-circle-max-badge">MAX</span>
                         }
                     </div>
-                    @if (op.PotentialRanks != null && op.PotentialRanks.Count > selectedPotential && selectedPotential > 0)
-                    {
-                        <div class="od-pot-desc">@op.PotentialRanks[selectedPotential].Description</div>
-                    }
-                    else
-                    {
-                        <div class="od-pot-desc">Pot @(selectedPotential + 1)</div>
-                    }
+
+                    <!-- Promote MAX & Potential+ Badge Buttons -->
+                    <div class="od-ep-actions">
+                        <!-- Promote/Elite Icon Picker -->
+                        <div class="od-ep-action-box">
+                            <div class="od-elite-icons">
+                                @for (int i = 0; i < (op.Phases?.Count ?? 1); i++)
+                                {
+                                    var eIndex = i;
+                                    <button class="od-elite-icon-btn @(elite == eIndex ? "active" : "")"
+                                            @onclick="() => OnEliteChanged(eIndex)"
+                                            title="Elite @eIndex">
+                                        <img src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/ui/elite/@(eIndex).png" alt="E@eIndex" />
+                                    </button>
+                                }
+                            </div>
+                            <span class="od-ep-label">Promote @(elite == (op.Phases?.Count ?? 1) - 1 ? "MAX" : $"E{elite}")</span>
+                        </div>
+
+                        <!-- Potential Selector -->
+                        <div class="od-ep-action-box">
+                            <div class="od-potential-dots">
+                                @for (int p = 0; p < 6; p++)
+                                {
+                                    var potIndex = p;
+                                    <span class="od-pot-dot @(selectedPotential >= potIndex ? "active" : "")"
+                                          @onclick="() => selectedPotential = potIndex"
+                                          title="Potential @(potIndex + 1)"></span>
+                                }
+                            </div>
+                            <span class="od-ep-label">Potential +</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Quick Level Slider Bar -->
+                <div class="od-level-quick-row">
+                    <span class="od-quick-lv-text">Select Lv:</span>
+                    <input class="od-lv-slider"
+                           type="range"
+                           min="1"
+                           max="@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)"
+                           @bind="currentLevel"
+                           @bind:event="oninput"
+                           @onchange="SaveState" />
+                    <button class="od-quick-lv-btn" @onclick="() => showLevelModal = true">Change Level ⚙️</button>
                 </div>
             </div>
 
-            <!-- SKILL SECTION -->
-            @if (skills != null && skills.Count > 0)
-            {
-                <div class="od-skill-section">
-                    <div class="od-section-label">▲ Skill</div>
-
-                    <!-- Skill Tabs (chọn skill 1/2/3) -->
-                    <div class="od-skill-tabs">
-                        @for (int i = 0; i < skills.Count; i++)
-                        {
-                            var sIdx = i;
-                            var sk = skills[sIdx];
-                            var firstLvl = sk.Levels?.FirstOrDefault();
-                            <div class="od-skill-tab @(selectedSkill == sIdx ? "od-skill-tab-active" : "")"
-                                 @onclick="() => SelectSkill(sIdx)">
-                                <img class="od-skill-tab-icon" src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" />
-                                @if (firstLvl != null)
-                                {
-                                    <span class="od-skill-sp">▶@firstLvl.InitSp ⚡@firstLvl.SpCost</span>
-                                }
-                            </div>
-                        }
+            <!-- DRAWER 1: SKILL SECTION -->
+            <div class="od-drawer-card @(activeDrawer == DrawerState.SkillExpanded ? "expanded" : "collapsed")">
+                <!-- Drawer Header -->
+                <div class="od-drawer-header" @onclick="ToggleSkillDrawer">
+                    <div class="od-drawer-title">
+                        <span class="od-drawer-arrow">▲</span>
+                        <span>Skill</span>
                     </div>
+                    <button class="od-drawer-search-btn" @onclick:stopPropagation="true" @onclick="ToggleSkillDrawer" title="Skill Detail Range Search">🔍</button>
+                </div>
 
-                    <!-- Skill Detail Card -->
-                    @{
-                        var currentLvl = GetCurrentSkillLevel();
-                        var currentSkill = selectedSkill < skills.Count ? skills[selectedSkill] : null;
-                    }
-                    @if (currentLvl != null && currentSkill != null)
-                    {
-                        <div class="od-skill-card">
-                            <!-- Skill Level Selector (Level 1-7, Mastery 1-3) -->
-                            <div class="od-skill-level-row">
-                                <span class="od-skill-level-label">Lv</span>
-                                <div class="od-skill-lvl-dots">
-                                    @for (int l = 0; l < Math.Min(7, currentSkill.Levels.Count); l++)
-                                    {
-                                        var lvlIdx = l;
-                                        <span class="od-lvl-dot @(selectedSkillLevel == lvlIdx ? "active" : "")"
-                                              @onclick="() => OnSkillLevelChanged(lvlIdx)">@(lvlIdx + 1)</span>
-                                    }
-                                    @if (currentSkill.Levels.Count > 7)
-                                    {
-                                        <span class="od-lvl-separator"></span>
-                                        @for (int m = 7; m < currentSkill.Levels.Count; m++)
+                @if (activeDrawer == DrawerState.SkillExpanded)
+                {
+                    <!-- EXPANDED SKILL VIEW (Image 2) -->
+                    <div class="od-drawer-body">
+                        @if (skills != null && skills.Count > 0)
+                        {
+                            <!-- Skill Tab Icons Grid -->
+                            <div class="od-skill-tabs-expanded">
+                                @for (int i = 0; i < skills.Count; i++)
+                                {
+                                    var sIdx = i;
+                                    var sk = skills[sIdx];
+                                    var firstLvl = sk.Levels?.FirstOrDefault();
+                                    <div class="od-skill-tab-item @(selectedSkill == sIdx ? "active" : "")"
+                                         @onclick="() => SelectSkill(sIdx)">
+                                        <img class="od-skill-tab-img" src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" />
+                                        @if (selectedSkill == sIdx)
                                         {
-                                            var mIdx = m;
-                                            var mNum = m - 6;
-                                            <span class="od-lvl-dot mastery @(selectedSkillLevel == mIdx ? "active" : "")"
-                                                  @onclick="() => OnSkillLevelChanged(mIdx)">M@(mNum)</span>
+                                            <span class="od-skill-check">✓</span>
                                         }
-                                    }
-                                </div>
-                            </div>
-
-                            <!-- Skill Header -->
-                            <div class="od-skill-header">
-                                <img class="od-skill-icon-sm" src="@GetSkillImageUrl(currentSkill.IconId ?? currentSkill.SkillId)" />
-                                <div class="od-skill-meta">
-                                    <span class="od-skill-name">@currentLvl.Name</span>
-                                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                                        @if (!string.IsNullOrEmpty(currentSkill.SkillType))
+                                        @if (firstLvl != null)
                                         {
-                                            <span class="od-sp-type-badge">@currentSkill.SkillType</span>
-                                        }
-                                        @if (currentLvl.Duration > 0)
-                                        {
-                                            <span class="od-duration-badge">⏱ @(currentLvl.Duration)s</span>
+                                            <div class="od-skill-sp-sub">▶@firstLvl.InitSp ⚡@firstLvl.SpCost</div>
                                         }
                                     </div>
-                                </div>
-                            </div>
-
-                            <!-- Skill Stats -->
-                            <div class="od-skill-stats">
-                                <span class="od-skill-stat-item">SP: <b>@currentLvl.SpCost</b></span>
-                                <span class="od-skill-stat-item">Init: <b>@(currentLvl.InitSp ?? 0)</b></span>
-                                @if (currentLvl.Duration > 0)
-                                {
-                                    <span class="od-skill-stat-item">Duration: <b>@(currentLvl.Duration)s</b></span>
                                 }
                             </div>
 
-                            <!-- Skill Description -->
-                            <p class="od-skill-desc">@CleanDescription(currentLvl.Description)</p>
-
-                            <!-- Skill Range (nếu skill có RangeId riêng) -->
-                            @if (!string.IsNullOrEmpty(currentLvl.RangeId) && activeSkillRangeMatrix != null)
+                            <!-- Selected Skill Details Card -->
+                            @if (CurrentSkillLevel != null && CurrentSkill != null)
                             {
-                                <div class="od-skill-range">
-                                    <div class="od-range-header">
-                                        <span class="od-range-title">Range</span>
-                                        <span class="od-range-id-badge">@currentLvl.RangeId</span>
+                                <div class="od-skill-expanded-card">
+                                    <div class="od-skill-expanded-header">
+                                        <h3 class="od-skill-name-lg">@CurrentSkillLevel.Name</h3>
                                     </div>
-                                    <div class="od-range-grid-container"
-                                         style="grid-template-columns: repeat(@activeSkillRangeMatrix.ColumnCount, 14px);
-                                                grid-template-rows: repeat(@activeSkillRangeMatrix.RowCount, 14px);">
-                                        @for (int r = 0; r < activeSkillRangeMatrix.RowCount; r++)
+
+                                    <!-- Badges Row: Auto Recovery / Manual / Duration / Range -->
+                                    <div class="od-skill-badges-row">
+                                        <span class="od-badge auto-recovery">Auto Recovery</span>
+                                        <span class="od-badge manual">Manual</span>
+                                        @if (CurrentSkillLevel.Duration > 0)
                                         {
-                                            @for (int c = 0; c < activeSkillRangeMatrix.ColumnCount; c++)
-                                            {
-                                                var cellType = activeSkillRangeMatrix.GetCellType(r, c);
-                                                <div class="od-range-tile @cellType"
-                                                     title="[@activeSkillRangeMatrix.GetRowCoord(r), @activeSkillRangeMatrix.GetColCoord(c)]">
-                                                </div>
-                                            }
+                                            <span class="od-badge duration">⏱ @(CurrentSkillLevel.Duration) sec</span>
                                         }
+                                        @if (!string.IsNullOrEmpty(CurrentSkillLevel.RangeId))
+                                        {
+                                            <button class="od-badge range-btn">🔍 Range</button>
+                                        }
+                                    </div>
+
+                                    <!-- Description -->
+                                    <p class="od-skill-desc-text">
+                                        @CleanDescription(CurrentSkillLevel.Description)
+                                    </p>
+
+                                    <!-- Skill Range Grid Display -->
+                                    @if (activeSkillRangeMatrix != null && activeSkillRangeData != null)
+                                    {
+                                        <div class="od-attack-range od-skill-attack-range" style="margin-top: 8px;">
+                                            <div class="od-range-header">
+                                                <span class="od-range-title">Skill Range</span>
+                                                <span class="od-range-id-badge">@activeSkillRangeData.Id</span>
+                                            </div>
+                                            <div class="od-range-grid-container"
+                                                 style="grid-template-columns: repeat(@activeSkillRangeMatrix.ColumnCount, 16px);
+                                                        grid-template-rows: repeat(@activeSkillRangeMatrix.RowCount, 16px);">
+                                                @for (int r = 0; r < activeSkillRangeMatrix.RowCount; r++)
+                                                {
+                                                    @for (int c = 0; c < activeSkillRangeMatrix.ColumnCount; c++)
+                                                    {
+                                                        var cellType = activeSkillRangeMatrix.GetCellType(r, c);
+                                                        <div class="od-range-tile @cellType" title="[@activeSkillRangeMatrix.GetRowCoord(r), @activeSkillRangeMatrix.GetColCoord(c)]">
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <!-- Skill Footer Action Row -->
+                                    <div class="od-skill-footer-row">
+                                        <span class="od-default-skill-badge">Default Skill</span>
+                                        <div class="od-rank-specialize-group">
+                                            <span class="od-rank-badge">RANK <b>@(selectedSkillLevel + 1)</b></span>
+                                            <button class="od-specialize-btn">🔺 Specialize skill</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Skill Level Dots Selector (1-7, M1-3) -->
+                                    <div class="od-skill-level-row">
+                                        <span class="od-skill-level-label">Lv</span>
+                                        <div class="od-skill-lvl-dots">
+                                            @for (int l = 0; l < Math.Min(7, CurrentSkill.Levels.Count); l++)
+                                            {
+                                                var lvlIdx = l;
+                                                <span class="od-lvl-dot @(selectedSkillLevel == lvlIdx ? "active" : "")"
+                                                      @onclick="() => OnSkillLevelChanged(lvlIdx)">@(lvlIdx + 1)</span>
+                                            }
+                                            @if (CurrentSkill.Levels.Count > 7)
+                                            {
+                                                <span class="od-lvl-separator"></span>
+                                                @for (int m = 7; m < CurrentSkill.Levels.Count; m++)
+                                                {
+                                                    var mIdx = m;
+                                                    var mNum = m - 6;
+                                                    <span class="od-lvl-dot mastery @(selectedSkillLevel == mIdx ? "active" : "")"
+                                                          @onclick="() => OnSkillLevelChanged(mIdx)">M@(mNum)</span>
+                                                }
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                             }
-                        </div>
-                    }
-                </div>
-            }
-
-            <!-- TALENT SECTION -->
-            @if (op.Talents != null && op.Talents.Count > 0)
-            {
-                <div class="od-talent-section">
-                    <div class="od-section-label">Talents</div>
-                    @foreach (var talent in op.Talents)
-                    {
-                        var candidate = GetActiveTalentCandidate(talent);
-                        if (candidate != null && (!string.IsNullOrEmpty(candidate.Name) || !string.IsNullOrEmpty(candidate.Description)))
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- COLLAPSED SKILL VIEW (Image 1) -->
+                    <div class="od-drawer-body-collapsed" @onclick="ToggleSkillDrawer">
+                        @if (skills != null && skills.Count > 0)
                         {
-                            <div class="od-talent-item">
-                                <div class="od-talent-name">@candidate.Name</div>
-                                @if (candidate.UnlockCondition != null)
+                            <div class="od-skill-summary-row">
+                                <div class="od-skill-summary-icons">
+                                    @for (int i = 0; i < skills.Count; i++)
+                                    {
+                                        var sIdx = i;
+                                        var sk = skills[sIdx];
+                                        var firstLvl = sk.Levels?.FirstOrDefault();
+                                        <div class="od-skill-summary-item @(selectedSkill == sIdx ? "active" : "")">
+                                            <img src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" />
+                                            @if (selectedSkill == sIdx)
+                                            {
+                                                <span class="od-skill-check">✓</span>
+                                            }
+                                            @if (firstLvl != null)
+                                            {
+                                                <div class="od-skill-sp-sub">▶@firstLvl.InitSp ⚡@firstLvl.SpCost</div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <div class="od-skill-summary-meta">
+                                    <span class="od-summary-rank">RANK <b>@(selectedSkillLevel + 1)</b></span>
+                                    <span class="od-summary-specialize">Specialize 🔺</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- DRAWER 2: BRANCH / TALENT / MODULE SECTION -->
+            <div class="od-drawer-card @(activeDrawer == DrawerState.ModuleExpanded ? "expanded" : "collapsed")">
+                <!-- Drawer Header -->
+                <div class="od-drawer-header" @onclick="ToggleModuleDrawer">
+                    <div class="od-drawer-title">
+                        <span class="od-drawer-arrow">▲</span>
+                        <span>Branch+</span>
+                    </div>
+                </div>
+
+                @if (activeDrawer == DrawerState.ModuleExpanded)
+                {
+                    <!-- EXPANDED MODULE VIEW (Image 3) -->
+                    <div class="od-drawer-body">
+                        <!-- Subprofession / Branch Header -->
+                        <div class="od-branch-header">
+                            <img class="od-subprof-icon-lg" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png" />
+                            <h3 class="od-branch-title-text">@FormatSubProfession(op.SubProfessionId)</h3>
+                        </div>
+
+                        <!-- Module Selection Row (Wiki Mode) -->
+                        <div class="od-module-block">
+                            <span class="od-block-label">Module</span>
+                            <div class="od-module-slots-row">
+                                <!-- ORIGINAL Base Module -->
+                                <div class="od-mod-slot-box @(selectedModuleIndex == 0 ? "active" : "")"
+                                     @onclick="() => OnModuleSelected(0)">
+                                    <span class="od-mod-slot-badge">ORIGINAL</span>
+                                    @if (selectedModuleIndex == 0)
+                                    {
+                                        <span class="od-mod-check">✓</span>
+                                    }
+                                </div>
+
+                                <!-- Operator Custom Modules -->
+                                @if (modules != null && modules.Count > 0)
                                 {
-                                    <div class="od-talent-unlock">
-                                        Unlocked at @FormatPhase(candidate.UnlockCondition.Phase) Lv @candidate.UnlockCondition.Level
-                                        @if (candidate.RequiredPotentialRank > 0)
+                                    @for (int m = 0; m < modules.Count; m++)
+                                    {
+                                        var mIdx = m + 1;
+                                        var mod = modules[m];
+                                        <div class="od-mod-slot-box @(selectedModuleIndex == mIdx ? "active" : "")"
+                                             @onclick="() => OnModuleSelected(mIdx)"
+                                             title="@mod.UniEquipName">
+                                            <!-- USER_CUSTOMIZATION: Ảnh Module Icon. Bạn có thể tự thay đổi đường dẫn ảnh tại đây (vd: /assets/icons/modules/...) -->
+                                            <img class="od-mod-slot-img" src="@GetModuleIconUrl(mod)" alt="@mod.UniEquipName" />
+                                            @if (selectedModuleIndex == mIdx)
+                                            {
+                                                <span class="od-mod-check">✓</span>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <!-- Selected Module Name & Details -->
+                            <div class="od-mod-info-card">
+                                <span class="od-mod-title">@(CurrentModule != null ? CurrentModule.UniEquipName : $"{op.Name}'s Badge")</span>
+                                <p class="od-mod-desc">@(CurrentModule != null ? CurrentModule.UniEquipDesc : "Default Module")</p>
+
+                                <!-- Per-Stage Stat detail (from BattleEquipPack) -->
+                                @if (CurrentModule != null && currentModuleBattleEquip?.Phases != null && currentModuleBattleEquip.Phases.Count > 0)
+                                {
+                                    <div class="od-mod-stage-detail">
+                                        @for (int stIdx = 0; stIdx < currentModuleBattleEquip.Phases.Count; stIdx++)
                                         {
-                                            <span> (Pot @(candidate.RequiredPotentialRank + 1))</span>
+                                            var phase = currentModuleBattleEquip.Phases[stIdx];
+                                            var stageNum = stIdx + 1;
+                                            <div class="od-mod-stage-row">
+                                                <div class="od-mod-stage-badge">@stageNum</div>
+                                                <div class="od-mod-stage-content">
+                                                    @{
+                                                        // Lấy Trait override nếu có
+                                                        var traitOverride = phase.Parts?.FirstOrDefault(p => p.OverrideTraitDataBundle?.Candidates?.Count > 0)
+                                                            ?.OverrideTraitDataBundle?.Candidates?.FirstOrDefault();
+                                                        // Lấy Talent upgrade nếu có
+                                                        var talentUpgrade = phase.Parts?.FirstOrDefault(p => p.AddOrOverrideTalentDataBundle?.Candidates?.Count > 0)
+                                                            ?.AddOrOverrideTalentDataBundle?.Candidates?.FirstOrDefault();
+                                                        // Lấy stat changes từ AttributeBlackboard (đổi tên tránh conflict với stats ở outer scope)
+                                                        var modStats = phase.AttributeBlackboard;
+                                                    }
+                                                    @if (traitOverride != null && !string.IsNullOrEmpty(traitOverride.OverrideDescripton))
+                                                    {
+                                                        <span class="od-mod-stage-trait">Trait: @CleanDescription(traitOverride.OverrideDescripton)</span>
+                                                    }
+                                                    @if (modStats != null && modStats.Count > 0)
+                                                    {
+                                                        <div class="od-mod-stage-stat">
+                                                            @foreach (var bb in modStats.Where(b => b.Value.HasValue && b.Value.Value != 0))
+                                                            {
+                                                                <span style="margin-right:8px">@bb.Key.ToUpper(): +@bb.Value</span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    @if (talentUpgrade != null && !string.IsNullOrEmpty(talentUpgrade.Description))
+                                                    {
+                                                        <span class="od-mod-stage-talent">Talent: @CleanDescription(talentUpgrade.Description)</span>
+                                                    }
+                                                </div>
+                                            </div>
                                         }
                                     </div>
                                 }
-                                <p class="od-talent-desc">@CleanDescription(candidate.Description)</p>
+                                else if (CurrentModule != null && currentModuleBattleEquip == null)
+                                {
+                                    <p class="od-mod-no-stat">Loading module stat data...</p>
+                                }
+
+                                <!-- USER_CUSTOMIZATION: Phần hiển thị Nguyên liệu Nâng cấp Module (Material Upgrade Costs) - Dành cho task sau -->
+                                <!--
+                                <div class="od-mod-materials-section">
+                                    <span class="od-mod-mat-label">Upgrade Materials:</span>
+                                    <div class="od-mod-mat-list">
+                                         Render danh sách item / nguyên liệu tại đây...
+                                    </div>
+                                </div>
+                                -->
+
+                                <div class="od-mod-footer-row">
+                                    <span class="od-mod-stage">STAGE <b>@(currentModuleBattleEquip?.Phases?.Count > 0 ? currentModuleBattleEquip.Phases.Count.ToString() : "-")</b></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trait Section: Hiển thị description từ Operator trait (CharacterDetail.Description) -->
+                        <div class="od-trait-block">
+                            <span class="od-block-label">Trait</span>
+                            @if (!string.IsNullOrEmpty(op.Description))
+                            {
+                                <p class="od-trait-desc">@CleanDescription(op.Description)</p>
+                            }
+                            else
+                            {
+                                <!-- Range ID cho trait/range lookup: bạn có thể tự copy ID bên dưới để tra range table -->
+                                <!-- RangeId: @op.Phases?[Math.Min(elite, (op.Phases?.Count ?? 1) - 1)]?.RangeId -->
+                                <!-- GitHub range_table EN: https://github.com/ArknightsAssets/ArknightsAssets2/tree/en/assets/dyn/gamedata/excel -->
+                                <p class="od-trait-desc">—</p>
+                            }
+                        </div>
+
+                        <!-- Talent Section -->
+                        @if (op.Talents != null && op.Talents.Count > 0)
+                        {
+                            <div class="od-talent-block">
+                                <span class="od-block-label">Talent</span>
+                                @foreach (var talent in op.Talents)
+                                {
+                                    var candidate = GetActiveTalentCandidate(talent);
+                                    if (candidate != null && (!string.IsNullOrEmpty(candidate.Name) || !string.IsNullOrEmpty(candidate.Description)))
+                                    {
+                                        <div class="od-talent-card-expanded">
+                                            <span class="od-talent-name-pill">@candidate.Name</span>
+                                            <p class="od-talent-desc-text">@CleanDescription(candidate.Description)</p>
+                                        </div>
+                                    }
+                                }
                             </div>
                         }
-                    }
-                </div>
-            }
+                    </div>
+                }
+                else
+                {
+                    <!-- COLLAPSED MODULE VIEW (Image 1) -->
+                    <div class="od-drawer-body-collapsed" @onclick="ToggleModuleDrawer">
+                        <div class="od-module-summary-row">
+                            <div class="od-branch-summary">
+                                <img class="od-subprof-icon-sm" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png" />
+                                <span class="od-branch-summary-name">@FormatSubProfession(op.SubProfessionId)</span>
+                            </div>
 
-            <!-- MODULE SECTION -->
-            <div class="od-module-section">
-                <div class="od-section-label">Module</div>
-                <div class="od-talent-item" style="border-left-color: #60a5fa;">
-                    <div class="od-talent-name">ORIGINAL</div>
-                    <p class="od-talent-desc">Default base class module attributes.</p>
-                </div>
+                            <div class="od-module-summary-slots">
+                                <div class="od-mod-mini-box @(selectedModuleIndex == 0 ? "active" : "")">ORIGINAL</div>
+                                @if (modules != null && modules.Count > 0)
+                                {
+                                    @for (int m = 0; m < modules.Count; m++)
+                                    {
+                                        var mIdx = m + 1;
+                                        var mod = modules[m];
+                                        <div class="od-mod-mini-box @(selectedModuleIndex == mIdx ? "active" : "")">
+                                            <img src="@GetModuleIconUrl(mod)" alt="@mod.UniEquipName" />
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <div class="od-module-summary-stage">
+                                <span>STAGE <b>-</b></span>
+                                <span class="od-manage-btn">Manage +</span>
+                            </div>
+                        </div>
+
+                        <!-- Active Talent Pill (Image 1 bottom pill) -->
+                        @if (op.Talents != null && op.Talents.Count > 0)
+                        {
+                            var firstTalent = GetActiveTalentCandidate(op.Talents.FirstOrDefault());
+                            @if (firstTalent != null && !string.IsNullOrEmpty(firstTalent.Name))
+                            {
+                                <div class="od-talent-pill-bar">
+                                    <span class="od-talent-pill-text">@firstTalent.Name</span>
+                                    <span class="od-pill-dropdown-arrow">▼</span>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
             </div>
 
         </aside>
+    </div>
+
+    <!-- LEVEL SELECTOR MODAL / DIALOG -->
+    @if (showLevelModal && op != null)
+    {
+        <div class="od-modal-backdrop" @onclick="() => showLevelModal = false">
+            <div class="od-modal-card" @onclick:stopPropagation="true">
+                <div class="od-modal-header">
+                    <h3 class="od-modal-title">⚙️ Select Level & Elite Rank - @op.Name</h3>
+                    <button class="od-modal-close-btn" @onclick="() => showLevelModal = false">✕</button>
+                </div>
+                <div class="od-modal-body">
+                    <!-- Elite Rank Picker -->
+                    <div class="od-modal-row">
+                        <label class="od-modal-label">Elite Phase:</label>
+                        <div class="od-elite-selector">
+                            @for (int i = 0; i < (op.Phases?.Count ?? 1); i++)
+                            {
+                                var eIdx = i;
+                                <button class="od-elite-btn @(elite == eIdx ? "active" : "")" @onclick="() => OnEliteChanged(eIdx)">E@(eIdx)</button>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Level Slider & Presets -->
+                    <div class="od-modal-row vertical">
+                        <div class="od-modal-level-header">
+                            <label class="od-modal-label">Level: <b>@currentLevel</b> / @(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)</label>
+                            <input type="number" min="1" max="@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)"
+                                   value="@currentLevel" @onchange="OnLevelInputChanged" class="od-level-input-num" />
+                        </div>
+
+                        <input class="od-lv-slider"
+                               type="range"
+                               min="1"
+                               max="@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)"
+                               @bind="currentLevel"
+                               @bind:event="oninput"
+                               @onchange="SaveState" />
+
+                        <div class="od-level-preset-btns">
+                            <button class="od-preset-btn" @onclick="() => SetLevel(1)">Lv 1</button>
+                            <button class="od-preset-btn" @onclick="() => SetLevel(30)">Lv 30</button>
+                            <button class="od-preset-btn" @onclick="() => SetLevel(60)">Lv 60</button>
+                            <button class="od-preset-btn active" @onclick="() => SetLevel(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)">MAX</button>
+                        </div>
+                    </div>
+
+                    <!-- Live Stat Preview in Modal -->
+                    @{
+                        var currentPreviewStats = GetStatsAtTrust(GetRawStat(), selectedTrust);
+                    }
+                    <div class="od-modal-stat-grid">
+                        <div class="od-modal-stat-chip">HP: <b>@currentPreviewStats.MaxHp</b></div>
+                        <div class="od-modal-stat-chip">ATK: <b>@currentPreviewStats.Atk</b></div>
+                        <div class="od-modal-stat-chip">DEF: <b>@currentPreviewStats.Def</b></div>
+                        <div class="od-modal-stat-chip">RES: <b>@currentPreviewStats.MagicResistance</b></div>
+                        <div class="od-modal-stat-chip">Cost: <b>@currentPreviewStats.Cost</b></div>
+                        <div class="od-modal-stat-chip">Block: <b>@currentPreviewStats.BlockCnt</b></div>
+                    </div>
+                </div>
+                <div class="od-modal-footer">
+                    <button class="od-modal-confirm-btn" @onclick="ApplyLevelModal">✓ Save & Apply Level</button>
+                </div>
+            </div>
+        </div>
+    }
     </div>
 }
 
@@ -447,6 +755,101 @@ else
     private CharacterDetail? op;
 
     private List<SkillsForOperatorResponse> skills = new();
+    private List<UniEquipData> modules = new();
+    private int selectedModuleIndex = 0;
+    private BattleEquipPack? currentModuleBattleEquip;
+
+    private enum DrawerState { Collapsed, SkillExpanded, ModuleExpanded }
+    private DrawerState activeDrawer = DrawerState.Collapsed;
+
+    private bool showLevelModal = false;
+    private static readonly Dictionary<string, (int Elite, int Level, int Trust)> _savedOperatorState = new();
+
+    private void SaveState()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            _savedOperatorState[Id] = (elite, currentLevel, selectedTrust);
+        }
+    }
+
+    private void SetLevel(int lvl)
+    {
+        if (op?.Phases != null && elite < op.Phases.Count)
+        {
+            currentLevel = Math.Clamp(lvl, 1, op.Phases[elite].MaxLevel);
+            SaveState();
+        }
+    }
+
+    private void OnLevelInputChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val))
+        {
+            SetLevel(val);
+        }
+    }
+
+    private void ApplyLevelModal()
+    {
+        SaveState();
+        showLevelModal = false;
+    }
+
+    private void ToggleSkillDrawer()
+    {
+        activeDrawer = activeDrawer == DrawerState.SkillExpanded ? DrawerState.Collapsed : DrawerState.SkillExpanded;
+    }
+
+    private void ToggleModuleDrawer()
+    {
+        activeDrawer = activeDrawer == DrawerState.ModuleExpanded ? DrawerState.Collapsed : DrawerState.ModuleExpanded;
+    }
+
+    private async Task OnModuleSelected(int modIdx)
+    {
+        selectedModuleIndex = modIdx;
+        currentModuleBattleEquip = null;
+
+        // modIdx == 0 = ORIGINAL (no BattleEquip), modIdx >= 1 = custom modules
+        if (modIdx > 0 && modules != null && modIdx <= modules.Count)
+        {
+            var mod = modules[modIdx - 1];
+            if (!string.IsNullOrEmpty(mod.UniEquipId))
+            {
+                try
+                {
+                    currentModuleBattleEquip = await service.GetBattleEquipAsync(mod.UniEquipId);
+                    Logger?.LogInformation("[OnModuleSelected] Loaded BattleEquip for '{ModId}': {Phases} phase(s)",
+                        mod.UniEquipId, currentModuleBattleEquip?.Phases?.Count ?? 0);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "[OnModuleSelected] Failed to load BattleEquip for '{ModId}'", mod.UniEquipId);
+                }
+            }
+        }
+    }
+
+    private SkillLevelResponse? CurrentSkillLevel => GetCurrentSkillLevel();
+    private SkillsForOperatorResponse? CurrentSkill => (skills != null && selectedSkill < skills.Count) ? skills[selectedSkill] : null;
+    private UniEquipData? CurrentModule => (selectedModuleIndex > 0 && modules != null && selectedModuleIndex <= modules.Count) ? modules[selectedModuleIndex - 1] : null;
+
+    private string FormatSubProfession(string? subProfId)
+    {
+        if (string.IsNullOrEmpty(subProfId)) return "Core Caster";
+        var clean = subProfId.Replace("_", " ");
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(clean);
+    }
+
+    private string GetModuleIconUrl(UniEquipData? module)
+    {
+        if (module == null || string.IsNullOrEmpty(module.UniEquipIcon))
+        {
+            return "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/equip/icon/ORIGINAL.png";
+        }
+        return $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/equip/icon/{module.UniEquipIcon.ToLower()}.png";
+    }
 
     private RangeData? activeRangeData;       // Range của Operator (Phase)
     private RangeMatrix? activeRangeMatrix;
@@ -460,24 +863,71 @@ else
             op = await service.GetByIdAsync(Id);
 
             selectedSkill = 0;
-            elite = 0;
-            displayElite = 0;
-            currentBgUrl = GetImageUrl(Id, displayElite);
-            currentLevel = op.Phases[elite].MaxLevel;
+            selectedModuleIndex = 0;
+            activeDrawer = DrawerState.Collapsed;
 
-            await UpdateRangeAsync();
-
-            Logger.LogInformation("Found operator: {OperatorName} with description: {OperatorDescription} and id: {Id}", op?.Name, op?.Description, op?.Id);
+            // Load saved Level/Elite state if previously set
+            if (!string.IsNullOrEmpty(Id) && _savedOperatorState.TryGetValue(Id, out var savedState))
+            {
+                elite = savedState.Elite;
+                displayElite = savedState.Elite;
+                selectedTrust = savedState.Trust;
+                currentLevel = savedState.Level;
+            }
+            else
+            {
+                elite = 0;
+                displayElite = 0;
+                currentBgUrl = GetImageUrl(Id, displayElite);
+                if (op?.Phases != null && op.Phases.Count > 0)
+                {
+                    currentLevel = op.Phases[elite].MaxLevel;
+                }
+            }
 
             if (op != null)
-                skills = await service.GetSkillsForOperatorAsync(op);
-            Logger.LogInformation("Fetched {SkillCount} skills for operator: {OperatorName}", skills.Count, op?.Name);
+            {
+                // 1. Fetch Skills safely
+                try
+                {
+                    skills = await service.GetSkillsForOperatorAsync(op);
+                }
+                catch (Exception exSkill)
+                {
+                    Logger?.LogError(exSkill, "Error fetching skills for operator: {OperatorName}", op.Name);
+                }
+
+                // 2. Fetch Modules safely
+                try
+                {
+                    modules = await service.GetModulesByOperatorAsync(op.Id);
+                }
+                catch (Exception exMod)
+                {
+                    Logger?.LogError(exMod, "Error fetching modules for operator: {OperatorName}", op.Name);
+                }
+            }
+
+            // 3. Update Range safely (non-blocking for Skill/Module UI)
+            try
+            {
+                await UpdateRangeAsync();
+            }
+            catch (Exception exRange)
+            {
+                Logger?.LogWarning(exRange, "Error updating range data for operator: {OperatorName}", op?.Name);
+            }
+
+            Logger?.LogInformation(
+                "[OnParametersSetAsync] Operator loaded: '{Name}' ({Id}) | E{Elite} LV{Level} Trust:{Trust} | Skills: {SkillCount} | Modules: {ModuleCount}",
+                op?.Name, Id, elite, currentLevel, selectedTrust, skills?.Count ?? 0, modules?.Count ?? 0);
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Error fetching operator details for Id: {Id}", Id);
         }
     }
+
     private int elite = 0;
     private int displayElite = 0;
     private string currentBgUrl = "";
@@ -490,6 +940,7 @@ else
         if (int.TryParse(e.Value?.ToString(), out var value))
         {
             selectedTrust = value;
+            SaveState();
         }
     }
 
@@ -498,7 +949,7 @@ else
         0 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1.png",
         1 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1%2B.png",
         2 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_2.png",
-        _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png"//https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_2.png
+        _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png"
     };
 
     private void OnImageError()
@@ -517,7 +968,20 @@ else
     {
         elite = newElite;
         displayElite = newElite;
-        await UpdateRangeAsync();
+        SaveState();
+        var maxLv = op?.Phases != null && op.Phases.Count > newElite ? op.Phases[newElite].MaxLevel : 0;
+        var phaseRangeId = op?.Phases != null && op.Phases.Count > newElite ? op.Phases[newElite].RangeId : "N/A";
+        Logger?.LogInformation(
+            "[OnEliteChanged] Operator '{Name}' -> E{Elite} | MaxLevel: {MaxLevel} | RangeId: '{RangeId}'",
+            op?.Name, newElite, maxLv, phaseRangeId);
+        try
+        {
+            await UpdateRangeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Error updating range on elite change.");
+        }
     }
 
     private int selectedSkill = 0;
@@ -528,33 +992,79 @@ else
     {
         selectedSkill = index;
         selectedSkillLevel = 0;
-        await UpdateRangeAsync();
+        if (skills != null && index < skills.Count)
+        {
+            var s = skills[index];
+            Logger?.LogInformation(
+                "[SelectSkill] Operator '{Name}': selected Skill #{Index} Id='{SkillId}' | Levels: {LevelCount}",
+                op?.Name, index, s.SkillId, s.Levels?.Count ?? 0);
+        }
+        try
+        {
+            await UpdateRangeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Error updating range on skill select.");
+        }
     }
 
     private async Task OnSkillLevelChanged(int lvlIdx)
     {
         selectedSkillLevel = lvlIdx;
-        await UpdateRangeAsync();
+        var skillLvl = GetCurrentSkillLevel();
+        Logger?.LogInformation(
+            "[OnSkillLevelChanged] Operator '{Name}': Skill #{SkillIdx} -> Level Index {LvlIdx} | Name='{LvlName}' SpCost={SpCost} Duration={Duration}",
+            op?.Name, selectedSkill, lvlIdx, skillLvl?.Name, skillLvl?.SpCost ?? 0, skillLvl?.Duration ?? 0);
+        try
+        {
+            await UpdateRangeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Error updating range on skill level change.");
+        }
     }
 
     private async Task UpdateRangeAsync()
     {
         if (op == null) return;
 
-        // 1. Operator range: luôn lấy từ Phase
-        var phaseRangeId = op.Phases[Math.Min(elite, op.Phases.Count - 1)].RangeId;
-        activeRangeData = await service.GetRangeDataAsync(phaseRangeId);
-        activeRangeMatrix = RangeMatrix.Create(activeRangeData);
+        // 1. Operator range: luôn lấy từ Phase (với try-catch an toàn)
+        try
+        {
+            var phaseRangeId = op.Phases[Math.Min(elite, op.Phases.Count - 1)].RangeId;
+            if (!string.IsNullOrEmpty(phaseRangeId))
+            {
+                activeRangeData = await service.GetRangeDataAsync(phaseRangeId);
+                activeRangeMatrix = activeRangeData != null ? RangeMatrix.Create(activeRangeData) : null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Failed to load phase range for operator {Id}", op.Id);
+            activeRangeData = null;
+            activeRangeMatrix = null;
+        }
 
         // 2. Skill range: chỉ lấy khi skill level có RangeId riêng
-        var skillLvl = GetCurrentSkillLevel();
-        if (!string.IsNullOrEmpty(skillLvl?.RangeId))
+        try
         {
-            activeSkillRangeData = await service.GetRangeDataAsync(skillLvl.RangeId);
-            activeSkillRangeMatrix = RangeMatrix.Create(activeSkillRangeData);
+            var skillLvl = GetCurrentSkillLevel();
+            if (!string.IsNullOrEmpty(skillLvl?.RangeId))
+            {
+                activeSkillRangeData = await service.GetRangeDataAsync(skillLvl.RangeId);
+                activeSkillRangeMatrix = activeSkillRangeData != null ? RangeMatrix.Create(activeSkillRangeData) : null;
+            }
+            else
+            {
+                activeSkillRangeData = null;
+                activeSkillRangeMatrix = null;
+            }
         }
-        else
+        catch (Exception ex)
         {
+            Logger?.LogWarning(ex, "Failed to load skill range for operator {Id}", op.Id);
             activeSkillRangeData = null;
             activeSkillRangeMatrix = null;
         }

@@ -14,6 +14,8 @@ namespace Core.Interfaces
         Task<CharacterDetail?> GetCharacterDetailAsync(string id);
         Task<Dictionary<string, SkillDetail>?> GetSkillTableAsync();
         Task<Dictionary<string, RangeData>?> GetRangeTableAsync();
+        Task<Dictionary<string, UniEquipData>?> GetUniEquipTableAsync();
+        Task<Dictionary<string, BattleEquipPack>?> GetBattleEquipTableAsync();
         //Task<SkillsForOperatorResponse?> GetSkillByIdAsync(string id);
         Task ResetCache();
     }

@@ -5,6 +5,7 @@ using Core.Models.Entities;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
@@ -33,12 +34,31 @@ namespace Core.Services
                 throw new Exception("Failed to retrieve character data.");
             }
 
-            return charactersData.Values.ToList();
+            var list = charactersData.Values.ToList();
+            _logger.LogInformation("[GetAllAsync] Loaded {Count} Characters from CharactersAsync.", list.Count);
+            return list;
         }
 
         public async Task<CharacterDetail?> GetByIdAsync(string id)
         {
-            return await _gameDataRepository.GetCharacterDetailAsync(id);
+            var detail = await _gameDataRepository.GetCharacterDetailAsync(id);
+            if (detail != null)
+            {
+                _logger.LogInformation(
+                    "[GetByIdAsync] Operator: '{Name}' ({Id}) | Rarity: {Rarity} | Profession: {Profession} | SubProfession: {SubProf} | Phases: {Phases} | Skills: {Skills} | Talents: {Talents}",
+                    detail.Name, id,
+                    detail.Rarity,
+                    detail.Profession,
+                    detail.SubProfessionId,
+                    detail.Phases?.Count ?? 0,
+                    detail.Skills?.Count ?? 0,
+                    detail.Talents?.Count ?? 0);
+            }
+            else
+            {
+                _logger.LogWarning("[GetByIdAsync] No operator found for ID: {Id}", id);
+            }
+            return detail;
         }
 
         public async Task<List<SkillsForOperatorResponse>> GetSkillsForOperatorAsync(CharacterDetail op, int count = 0)
@@ -82,18 +102,74 @@ namespace Core.Services
                 {
                     SkillId = skill.SkillId,
                     IconId = returnSkill.IconId,
-                    SkillType = returnLevels[count].SkillType,
+                    SkillType = (returnLevels != null && returnLevels.Count > count) ? returnLevels[count].SkillType : (returnLevels?.FirstOrDefault()?.SkillType),
                     Levels = skillLevelDtoList
 
                 };
 
+                _logger.LogInformation(
+                    "[GetSkillsForOperatorAsync] Skill #{Index}: Id='{SkillId}', IconId='{IconId}', Type={SkillType}, Levels={LevelCount}",
+                    list.Count, dto.SkillId, dto.IconId, dto.SkillType, dto.Levels?.Count ?? 0);
+
                 list.Add(dto);
             }
 
+            _logger.LogInformation("[GetSkillsForOperatorAsync] Total {Count} skills loaded for operator '{Name}'.", list.Count, op.Name);
             return list;
         }
 
-        private string? ParseBlackboard(string? description, List<SkillBlackboard>? blackboard)
+        public async Task<List<UniEquipData>> GetModulesByOperatorAsync(string id)
+        {
+            var list = new List<UniEquipData>();
+            if (string.IsNullOrEmpty(id)) return list;
+
+            var uniEquipData = await _gameDataRepository.GetUniEquipTableAsync();
+
+            if (uniEquipData == null || uniEquipData.Count == 0) 
+            {
+                return list;
+            }
+
+            list = uniEquipData.Values
+                .Where(x => (x.CharId != null && string.Equals(x.CharId, id, StringComparison.OrdinalIgnoreCase)) ||
+                            (x.UniEquipId != null && x.UniEquipId.Contains(id, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            _logger.LogInformation("[GetModulesByOperatorAsync] For operator '{Id}' found {Count} module(s).", id, list.Count);
+            foreach (var m in list)
+            {
+                _logger.LogInformation(
+                    "  Module: UniEquipId='{UniEquipId}', Name='{Name}', TypeName='{TypeName}', CharId='{CharId}'",
+                    m.UniEquipId, m.UniEquipName, m.TypeName1, m.CharId);
+            }
+            return list;
+        }
+
+        public async Task<BattleEquipPack?> GetBattleEquipAsync(string id)
+        {
+            var battleEquipData = await _gameDataRepository.GetBattleEquipTableAsync();
+
+            if (battleEquipData == null)
+            {
+                _logger.LogWarning("[GetBattleEquipAsync] BattleEquip table returned null.");
+                return null;
+            }
+
+            var pack = battleEquipData.GetValueOrDefault(id);
+            if (pack != null)
+            {
+                _logger.LogInformation(
+                    "[GetBattleEquipAsync] Found BattleEquipPack for Id='{Id}': {PhaseCount} phase(s).",
+                    id, pack.Phases?.Count ?? 0);
+            }
+            else
+            {
+                _logger.LogWarning("[GetBattleEquipAsync] No BattleEquipPack found for Id='{Id}'.", id);
+            }
+            return pack;
+        }
+
+        private string? ParseBlackboard(string? description, List<BlackboardDataPair>? blackboard)
         {
             if (string.IsNullOrEmpty(description)) return description;
 
@@ -147,8 +223,12 @@ namespace Core.Services
             var table = await _gameDataRepository.GetRangeTableAsync();
             if (table != null && table.TryGetValue(rangeId, out var data))
             {
+                _logger.LogInformation(
+                    "[GetRangeDataAsync] RangeId='{RangeId}': {GridCount} grid point(s).",
+                    rangeId, data.Grids?.Count ?? 0);
                 return data;
             }
+            _logger.LogWarning("[GetRangeDataAsync] RangeId='{RangeId}' not found in range table.", rangeId);
             return null;
         }
     }
