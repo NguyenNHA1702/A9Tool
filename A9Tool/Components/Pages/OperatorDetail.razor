@@ -21,7 +21,7 @@ else
 
         <div class="od-bg-layer" style="background-image: url('@currentBgUrl')"></div>
 
-        <!-- Ảnh ẩn dùng để test load, không hiển thị -->
+        <!-- --- Hidden asset preloader to verify availability before background display --- -->
         <img src="@GetImageUrl(Id, displayElite)"
              style="display:none"
              @key="elite"
@@ -33,21 +33,20 @@ else
         <nav class="od-topnav">
             <button class="od-back-btn" onclick="history.back()">← Back</button>
 
-            <!-- Tab selector (no logic yet) -->
+            <!-- --- Top Navigation Tabs (Extensible: Talents, Modules, Story) --- -->
             <div class="od-tabs">
                 <button class="od-tab active">Info</button>
                 <button class="od-tab">Skills</button>
-                <!-- Có thể mở rộng: Talents, Module, Lore -->
             </div>
         </nav>
 
         <div class="od-content-layer">
-            <!-- ── LEFT PANEL: Attributes + Trust ── -->
+            <!-- --- LEFT PANEL: Attributes & Stats --- -->
             <aside class="od-panel od-panel-left">
-                <!-- ATTRIBUTES SECTION -->
+                <!-- --- Sub-section: Attributes & Promotion --- -->
                 <div class="od-section od-attributes">
                     <div class="od-section-label">Attributes ▶▶</div>
-                    <!-- Elite Selector (E0 / E1 / E2) -->
+                    <!-- --- Sub-section: Elite Selector (E0 / E1 / E2) --- -->
                     @if (op?.Phases?.Count == 3)
                     {
                         <div class="od-elite-selector">
@@ -277,13 +276,13 @@ else
                 </div>
             </div>
 
-            <!-- ── RIGHT PANEL: Elite/Potential/Skill/Talent/Module ── -->
+            <!-- --- RIGHT PANEL: Elite, Potential, Skills, Talents & Modules --- -->
             <aside class="od-panel od-panel-right">
 
-                <!-- ELITE + POTENTIAL ROW & LEVEL HEADER -->
+                <!-- --- Sub-section: Elite & Potential Header --- -->
                 <div class="od-ep-card">
                     <div class="od-ep-top">
-                        <!-- Level Circle Badge (LV 80/80 MAX) - Click mở Modal chọn Level -->
+                        <!-- Level Circle Badge; opens Level Selection Modal on click -->
                         <div class="od-level-circle clickable" @onclick="() => showLevelModal = true" title="Click to Change Level & Elite">
                             <div class="od-circle-main">
                                 <span class="od-circle-lv">LV</span>
@@ -550,9 +549,9 @@ else
                                             var mod = modules[m];
                                             <div class="od-mod-slot-box @(selectedModuleIndex == mIdx ? "active" : "")"
                                                  @onclick="() => OnModuleSelected(mIdx)"
-                                                 title="@mod.UniEquipName">
-                                                <!-- USER_CUSTOMIZATION: Ảnh Module Icon. Bạn có thể tự thay đổi đường dẫn ảnh tại đây (vd: /assets/icons/modules/...) -->
-                                                <img class="od-mod-slot-img" src="@GetModuleIconUrl(mod)" alt="@mod.UniEquipName" />
+                                                 title="@mod.TypeName1">
+                                                <!-- Customization hook: Module icon path (e.g., /assets/icons/modules/...) -->
+                                                <img class="od-mod-slot-img" src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" />
                                                 @if (selectedModuleIndex == mIdx)
                                                 {
                                                     <span class="od-mod-check">✓</span>
@@ -565,6 +564,12 @@ else
                                 <!-- Selected Module Name & Details -->
                                 <div class="od-mod-info-card">
                                     <span class="od-mod-title">@(CurrentModule != null ? CurrentModule.UniEquipName : $"{op.Name}'s Badge")</span>
+                                    @if (CurrentModule != null && (!string.IsNullOrEmpty(CurrentModule.TypeName1) || !string.IsNullOrEmpty(CurrentModule.TypeName2)))
+                                    {
+                                        <div style="margin: 4px 0 6px 0;">
+                                            <span class="od-mod-type-chip">@CurrentModule.TypeName1@(!string.IsNullOrEmpty(CurrentModule.TypeName2) ? "-" + CurrentModule.TypeName2 : "")</span>
+                                        </div>
+                                    }
                                     <p class="od-mod-desc">@(CurrentModule != null ? CurrentModule.UniEquipDesc : "Default Module")</p>
 
                                     <!-- Per-Stage Stat detail (from BattleEquipPack) -->
@@ -581,12 +586,12 @@ else
                                         <p class="od-mod-no-stat">Loading module stat data...</p>
                                     }
 
-                                    <!-- USER_CUSTOMIZATION: Phần hiển thị Nguyên liệu Nâng cấp Module (Material Upgrade Costs) - Dành cho task sau -->
+                                    <!-- TODO: Module upgrade material requirements rendering (future task) -->
                                     <!--
                                 <div class="od-mod-materials-section">
                                     <span class="od-mod-mat-label">Upgrade Materials:</span>
                                     <div class="od-mod-mat-list">
-                                         Render danh sách item / nguyên liệu tại đây...
+                                         Render material items list here...
                                     </div>
                                 </div>
                                 -->
@@ -597,9 +602,7 @@ else
                                 </div>
                             </div>
 
-
-
-                            <!-- Trait Section: Hiển thị description từ Operator trait (CharacterDetail.Description) -->
+                            <!-- --- Trait & Attack Range Section --- -->
                             <div class="od-trait-block">
                                 <span class="od-block-label">Trait</span>
                                 @if (!string.IsNullOrEmpty(op.Description))
@@ -608,7 +611,7 @@ else
                                 }
                                 else
                                 {
-                                    <!-- Range ID cho trait/range lookup: bạn có thể tự copy ID bên dưới để tra range table -->
+                                    <!-- Range ID lookup reference: query against range table using the ID below -->
                                     <!-- RangeId: @op.Phases?[Math.Min(elite, (op.Phases?.Count ?? 1) - 1)]?.RangeId -->
                                     <!-- GitHub range_table EN: https://github.com/ArknightsAssets/ArknightsAssets2/tree/en/assets/dyn/gamedata/excel -->
                                     <p class="od-trait-desc">—</p>
@@ -654,7 +657,7 @@ else
                                             var mIdx = m + 1;
                                             var mod = modules[m];
                                             <div class="od-mod-mini-box @(selectedModuleIndex == mIdx ? "active" : "")">
-                                                <img src="@GetModuleIconUrl(mod)" alt="@mod.UniEquipName" />
+                                                <img src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" />
                                             </div>
                                         }
                                     }
@@ -783,7 +786,7 @@ else
                                 </div>
                                 @if (!string.IsNullOrEmpty(CurrentModule.TypeName1))
                                 {
-                                    <span class="od-mod-type-chip">@CurrentModule.TypeName1@(!string.IsNullOrEmpty(CurrentModule.TypeName2) ? "-" + CurrentModule.TypeName2 : "")</span>
+                                    <span class="od-mod-type-chip">@CurrentModule.UniEquipName</span>
                                 }
                             </div>
 
@@ -936,12 +939,12 @@ else
                                 </div>
                             </div>
 
-                            <!-- Materials Table (Commented placeholder for future repo implementation) -->
+                            <!-- Materials Table (Commented placeholder for future implementation) -->
                             <!--
                             <div class="od-mod-materials-box">
                                 <div class="od-mod-box-header">Materials Required</div>
                                 <div class="od-mod-mat-stages">
-                                     Render danh sách item / nguyên liệu STAGE 1, 2, 3 tại đây...
+                                     Render material requirements list for STAGES 1, 2, 3 here...
                                 </div>
                             </div>
                             -->
@@ -1150,12 +1153,13 @@ else
         {
             return "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/equip/icon/ORIGINAL.png";
         }
-        return $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/equip/icon/{module.UniEquipIcon.ToLower()}.png";
+        Logger.LogInformation("Load module image {imageId}", module.UniEquipIcon.ToLower());
+        return $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/ui/uniequipimg/{module.UniEquipIcon.ToLower()}.png";
     }
 
-    private RangeData? activeRangeData;       // Range của Operator (Phase)
+    private RangeData? activeRangeData;       // Operator base attack range for current phase
     private RangeMatrix? activeRangeMatrix;
-    private RangeData? activeSkillRangeData;  // Range của Skill level hiện tại
+    private RangeData? activeSkillRangeData;  // Skill override attack range for current skill level
     private RangeMatrix? activeSkillRangeMatrix;
 
     protected override async Task OnParametersSetAsync()
@@ -1332,7 +1336,7 @@ else
     {
         if (op == null) return;
 
-        // 1. Operator range: luôn lấy từ Phase (với try-catch an toàn)
+        // 1. Operator range: resolve from current phase with fallback
         try
         {
             var phaseRangeId = op.Phases[Math.Min(elite, op.Phases.Count - 1)].RangeId;
@@ -1349,7 +1353,7 @@ else
             activeRangeMatrix = null;
         }
 
-        // 2. Skill range: chỉ lấy khi skill level có RangeId riêng
+        // 2. Skill range: resolve override if defined by skill level
         try
         {
             var skillLvl = GetCurrentSkillLevel();

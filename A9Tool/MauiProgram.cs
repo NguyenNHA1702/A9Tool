@@ -1,8 +1,8 @@
-﻿using Core.Interfaces;
+using Core.Interfaces;
 using Core.Services;
 using Infrastructure.Github;
 using Microsoft.Extensions.Logging;
-using Microsoft.Maui.Storage; // Thêm để dùng FileSystem
+using Microsoft.Maui.Storage;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -34,22 +34,31 @@ namespace A9Tool
 
             builder.Services.AddMauiBlazorWebView();
 
-            // 1. Đăng ký HttpClient riêng lẻ
+            // 1. Register standalone HttpClient instance
             builder.Services.AddScoped(sp => new HttpClient());
 
-            // 2. Đăng ký Repository thủ công để truyền path
+            // 2. Register repository singleton with platform-specific persistent storage path
             builder.Services.AddSingleton<IGameDataRepository>(sp =>
             {
                 var httpClient = sp.GetRequiredService<HttpClient>();
                 var logger = sp.GetRequiredService<ILogger<GithubGameDataRepository>>();
 
-                // Lấy đường dẫn thư mục dữ liệu của App trên từng nền tảng (Win/Android/iOS)
+                // Resolve platform-specific application data directory (Windows / Android / iOS)
                 string localPath = Path.Combine(FileSystem.AppDataDirectory, "operators.json");
 
                 return new GithubGameDataRepository(httpClient, logger, localPath);
             });
 
+            builder.Services.AddSingleton(sp =>
+            {
+                var http = sp.GetRequiredService<HttpClient>();
+                var logger = sp.GetRequiredService<ILogger<ImageService>>();
+                string cachePath = Path.Combine(FileSystem.CacheDirectory, "A9ToolImages");
+                return new ImageService(http, logger, cachePath);
+            });
+
             builder.Services.AddScoped<CharacterService>();
+            builder.Services.AddSingleton<ImageService>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

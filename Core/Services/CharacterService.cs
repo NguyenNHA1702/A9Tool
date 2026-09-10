@@ -6,26 +6,35 @@ using Core.Models.Entities;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
+using System.Linq;
 using System.Text.RegularExpressions;
-
+using System.Threading.Tasks;
 
 namespace Core.Services
 {
+    /// <summary>
+    /// Core domain service for managing and processing operator character data,
+    /// including skills, modules (equipment), battle stats, and ranges.
+    /// </summary>
     public class CharacterService
     {
         private readonly IGameDataRepository _gameDataRepository;
         private readonly ILogger<CharacterService> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="CharacterService"/> with the repository and logger.
+        /// </summary>
         public CharacterService(IGameDataRepository gameDataRepository, ILogger<CharacterService> logger)
         {
             _gameDataRepository = gameDataRepository;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Retrieves the list of all available operators.
+        /// </summary>
+        /// <returns>A list of <see cref="Character"/> objects.</returns>
+        /// <exception cref="Exception">Thrown when character data cannot be retrieved from the repository.</exception>
         public async Task<List<Character>> GetAllAsync()
         {
             var charactersData = await _gameDataRepository.GetCharactersAsync();
@@ -40,6 +49,11 @@ namespace Core.Services
             return list;
         }
 
+        /// <summary>
+        /// Retrieves detailed information for a specific operator by their ID.
+        /// </summary>
+        /// <param name="id">The unique operator ID (e.g., "char_002_amiya").</param>
+        /// <returns>The <see cref="CharacterDetail"/> if found; otherwise, null.</returns>
         public async Task<CharacterDetail?> GetByIdAsync(string id)
         {
             var detail = await _gameDataRepository.GetCharacterDetailAsync(id);
@@ -62,41 +76,55 @@ namespace Core.Services
             return detail;
         }
 
+        /// <summary>
+        /// Resolves and formats all skills associated with an operator, parsing dynamic blackboard variables and cleaning markup.
+        /// </summary>
+        /// <param name="op">The detailed operator model.</param>
+        /// <param name="count">Default level index used to select the primary skill type.</param>
+        /// <returns>A list of formatted <see cref="SkillsForOperatorResponse"/> objects.</returns>
         public async Task<List<SkillsForOperatorResponse>> GetSkillsForOperatorAsync(CharacterDetail op, int count = 0)
         {
             var list = new List<SkillsForOperatorResponse>();
             var skillTable = await _gameDataRepository.GetSkillTableAsync();
 
+            if (skillTable == null || op.Skills == null)
+            {
+                _logger.LogWarning("[GetSkillsForOperatorAsync] SkillTable is null or operator has no skills.");
+                return list;
+            }
+
             foreach (var skill in op.Skills)
             {
                 _logger.LogInformation("Skill ID from op: {SkillId}", skill.SkillId);
 
-                if (!skillTable.TryGetValue(skill.SkillId, out var returnSkill))
+                if (string.IsNullOrEmpty(skill.SkillId) || !skillTable.TryGetValue(skill.SkillId, out var returnSkill))
                 {
                     _logger.LogWarning("Skill {SkillId} not found in skill table", skill.SkillId);
                     continue;
                 }
 
                 var returnLevels = returnSkill.Levels;
-
                 var skillLevelDtoList = new List<SkillLevelResponse>();
 
-                foreach (var skillLevel in returnSkill.Levels)
+                if (returnLevels != null)
                 {
-                    var parsedDesc = ParseBlackboard(skillLevel.Description, skillLevel.Blackboard);
-                    var cleanDesc = CleanDescription(parsedDesc);
-
-                    var skillLevelDto = new SkillLevelResponse
+                    foreach (var skillLevel in returnLevels)
                     {
-                        Name = skillLevel.Name,
-                        Description = cleanDesc,
-                        SpCost = skillLevel.SpData?.SpCost ?? 0,
-                        InitSp = skillLevel.SpData?.InitSp ?? 0,
-                        Duration = skillLevel.Duration,
-                        RangeId = skillLevel.RangeId
-                    };
+                        var parsedDesc = ParseBlackboard(skillLevel.Description, skillLevel.Blackboard);
+                        var cleanDesc = CleanDescription(parsedDesc);
 
-                    skillLevelDtoList.Add(skillLevelDto);
+                        var skillLevelDto = new SkillLevelResponse
+                        {
+                            Name = skillLevel.Name,
+                            Description = cleanDesc,
+                            SpCost = skillLevel.SpData?.SpCost ?? 0,
+                            InitSp = skillLevel.SpData?.InitSp ?? 0,
+                            Duration = skillLevel.Duration,
+                            RangeId = skillLevel.RangeId
+                        };
+
+                        skillLevelDtoList.Add(skillLevelDto);
+                    }
                 }
 
                 var dto = new SkillsForOperatorResponse
@@ -105,7 +133,6 @@ namespace Core.Services
                     IconId = returnSkill.IconId,
                     SkillType = (returnLevels != null && returnLevels.Count > count) ? returnLevels[count].SkillType : (returnLevels?.FirstOrDefault()?.SkillType),
                     Levels = skillLevelDtoList
-
                 };
 
                 _logger.LogInformation(
@@ -119,6 +146,11 @@ namespace Core.Services
             return list;
         }
 
+        /// <summary>
+        /// Retrieves all modules (equipment) assigned to an operator, ordered by unlock sequence, excluding initial badge slots.
+        /// </summary>
+        /// <param name="id">The unique operator ID.</param>
+        /// <returns>A list of <see cref="UniEquipData"/> modules.</returns>
         public async Task<List<UniEquipData>> GetModulesByOperatorAsync(string id)
         {
             var list = new List<UniEquipData>();
@@ -135,7 +167,7 @@ namespace Core.Services
 
             list = uniEquipData.Values
                 .Where(x => x.CharId != null && string.Equals(x.CharId, id, StringComparison.OrdinalIgnoreCase))
-                // Exclude INITIAL (default badge / ORIGINAL slot) — it is already represented by the hardcoded slot 0 in the UI.
+                // Exclude INITIAL (default badge / ORIGINAL slot) — it is already represented by slot 0 in the UI.
                 .Where(x => x.Type != UniEquipType.INITIAL)
                 .OrderBy(x => x.CharEquipOrder)
                 .ThenBy(x => x.UniEquipId)
@@ -151,6 +183,11 @@ namespace Core.Services
             return list;
         }
 
+        /// <summary>
+        /// Retrieves the battle equipment configuration pack (stages, stats, buffs) for a specific equipment ID.
+        /// </summary>
+        /// <param name="id">The equipment pack ID (e.g., "uniequip_002_amiya").</param>
+        /// <returns>The <see cref="BattleEquipPack"/> if found; otherwise, null.</returns>
         public async Task<BattleEquipPack?> GetBattleEquipAsync(string id)
         {
             var battleEquipData = await _gameDataRepository.GetBattleEquipTableAsync();
@@ -175,6 +212,9 @@ namespace Core.Services
             return pack;
         }
 
+        /// <summary>
+        /// Interpolates dynamic formula variables within description templates using values from the blackboard dataset.
+        /// </summary>
         private string? ParseBlackboard(string? description, List<BlackboardDataPair>? blackboard)
         {
             if (string.IsNullOrEmpty(description)) return description;
@@ -205,6 +245,9 @@ namespace Core.Services
             return description;
         }
 
+        /// <summary>
+        /// Formats numeric blackboard values into clean decimal or integer display strings.
+        /// </summary>
         private string FormatValue(double value)
         {
             return value % 1 == 0
@@ -212,17 +255,28 @@ namespace Core.Services
                 : value.ToString("0.##");
         }
 
+        /// <summary>
+        /// Removes HTML/XML style markup tags from raw description strings.
+        /// </summary>
         private static string? CleanDescription(string? description)
         {
             if (string.IsNullOrEmpty(description)) return description;
             return Regex.Replace(description, @"<[^>]+>", "");
         }
 
+        /// <summary>
+        /// Clears memory and disk caches in the underlying game data repository.
+        /// </summary>
         public async Task ResetCache()
         {
             await _gameDataRepository.ResetCache();
         }
 
+        /// <summary>
+        /// Retrieves the attack range grid layout for a given range ID.
+        /// </summary>
+        /// <param name="rangeId">The unique range identifier.</param>
+        /// <returns>The <see cref="RangeData"/> if found; otherwise, null.</returns>
         public async Task<RangeData?> GetRangeDataAsync(string? rangeId)
         {
             if (string.IsNullOrEmpty(rangeId)) return null;

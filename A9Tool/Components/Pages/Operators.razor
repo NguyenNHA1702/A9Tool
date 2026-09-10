@@ -10,20 +10,22 @@
     }
     else
     {
+        <!-- --- Header & Cache Status --- -->
         <div class="flex items-baseline gap-3 mb-6">
             <h1 class="text-3xl font-bold">Arknights Operators</h1>
             <span class="text-muted cursor-pointer" @onclick="ResetCache">@FilteredCharacters.Count() operators</span>
         </div>
 
+        <!-- --- Filter & Search Controls --- -->
         <div class="filter-container">
             <input type="text"
                    class="search-input"
-                   placeholder="Tìm operator..."
+                   placeholder="Search operator..."
                    @bind="searchTerm"
                    @bind:event="oninput" />
 
             <select class="filter-select" @bind="selectRarity">
-                <option value="">Tất cả Rarity</option>
+                <option value="">All Rarities</option>
                 <option value="TIER_6">6★</option>
                 <option value="TIER_5">5★</option>
                 <option value="TIER_4">4★</option>
@@ -33,7 +35,7 @@
             </select>
 
             <select class="filter-select" @bind="selectProfession">
-                <option value="">Tất cả Class</option>
+                <option value="">All Classes</option>
                 <option value="PIONEER">Vanguard</option>
                 <option value="WARRIOR">Guard</option>
                 <option value="TANK">Defender</option>
@@ -45,6 +47,7 @@
             </select>
         </div>
 
+        <!-- --- Operator Cards Grid --- -->
         <div class="operator-grid">
             @foreach (var op in FilteredCharacters)
             {

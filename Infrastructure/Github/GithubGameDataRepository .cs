@@ -23,14 +23,15 @@ namespace Infrastructure.Github
         private readonly ILogger<GithubGameDataRepository> _logger;
         private readonly FlatBuffersConverter _flatBuffersConverter;
 
-        // NEW REPO URL base: https://github.com/ArknightsAssets/ArknightsAssets2/tree/en/assets/dyn/gamedata/excel
+        // Reference Data Source URLs:
+        // - Primary new repo base: https://github.com/ArknightsAssets/ArknightsAssets2/tree/en/assets/dyn/gamedata/excel
         private const string GITHUB_API_EXCEL_CONTENTS_URL = "https://api.github.com/repos/ArknightsAssets/ArknightsAssets2/contents/assets/dyn/gamedata/excel?ref=en";
 
-        // OLD REPO URLS (Deprecated / Stopped Updating):
-        // https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/character_table.json
-        // https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/character_table.json
-        // https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/skill_table.json
-        // https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/range_table.json
+        // Legacy / Fallback Reference URLs:
+        // - Character table (EN): https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/character_table.json
+        // - Character table (CN): https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/character_table.json
+        // - Skill table (EN): https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/skill_table.json
+        // - Range table (EN): https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/range_table.json
 
         public GithubGameDataRepository(HttpClient httpClient, ILogger<GithubGameDataRepository> logger, string filePath)
         {
@@ -255,8 +256,8 @@ namespace Infrastructure.Github
             var opts = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-                // FlatBuffers JSON xuất enum dưới dạng string ("PHASE_2") hoặc integer,
-                // JsonStringEnumConverter(null) giữ nguyên tên enum (PHASE_0, PHASE_2...), allowIntegerValues: true cho phép đọc số
+                // FlatBuffers JSON outputs enums as either strings (e.g., "PHASE_2") or integers.
+                // JsonStringEnumConverter(namingPolicy: null) preserves original enum names while allowIntegerValues allows reading numeric representations.
                 Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
             };
 
@@ -574,8 +575,8 @@ namespace Infrastructure.Github
             string localpath3 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
             string localpath4 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
             string localpath5 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "battle_equip_table.json");
-            // NOTE: range_table.json là dữ liệu tĩnh (72 entries, không thay đổi theo bản game).
-            // File .bytes trên repo mới không decode được qua flatc nên KHÔNG xóa local cache.
+            // NOTE: range_table.json contains static game definitions (72 entries, invariant across game updates).
+            // Newer .bytes files cannot be decoded via flatc, so the static local cache must NOT be deleted.
 
             _logger.LogInformation("[ResetCache] Resetting local data cache (character, skill). Range table is static and will NOT be cleared.");
 
@@ -610,8 +611,8 @@ namespace Infrastructure.Github
             await GetSkillTableAsync();
             await GetUniEquipTableAsync();
             await GetBattleEquipTableAsync();
-            // NOTE: Không gọi GetRangeTableAsync() ở đây vì range_table dùng local cache tĩnh,
-            // không fetch qua flatc để tránh crash exit code -1073741819.
+            // NOTE: Do not call GetRangeTableAsync() here because range_table relies on static local cache
+            // and avoids flatc execution to prevent crash exit code -1073741819.
             _logger.LogInformation("[ResetCache] Cache reset complete.");
         }
     }

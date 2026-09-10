@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -19,7 +19,7 @@ namespace Core.Models.Entities
 
         public List<BlackboardDataPair> Blackboard { get; set; } = [];
 
-        // Giữ nguyên spelling theo schema
+        // Preserves original Arknights schema typo ("OverrideDescription") to ensure accurate JSON deserialization.
         public string? OverrideDescripton { get; set; }
 
         public string? PrefabKey { get; set; }

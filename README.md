@@ -71,8 +71,8 @@ A9Tools/
 | Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
 | :---: | :---: | :--- | :---: | :---: | :---: |
 | [x] | A9-201 | **Nạp dữ liệu Module từ GitHub:** Tải và parse dữ liệu module từ `uniequip_table.json` và `battle_equip_table.json`. | 2h | ⚡ Cao | `Done` |
-| [] | A9-202 | **Giao diện chi tiết Module:** Hiển thị icon module, tên module, điều kiện mở khóa. | 2h | ⚡ Cao | `Refactoring` |
-| [x] | A9-203 | **Tương tác cấp độ Module (Stage 1/2/3):** Cho phép click chọn Stage 1/2/3 để xem các chỉ số cộng thêm động và sự thay đổi Trait/Talent. | 2h | ⚡ Cao | `ToDo` |
+| [x] | A9-202 | **Giao diện chi tiết Module:** Hiển thị icon module, tên module, điều kiện mở khóa. | 2h | ⚡ Cao | `Done` |
+| [x] | A9-203 | **Tương tác cấp độ Module (Stage 1/2/3):** Cho phép click chọn Stage 1/2/3 để xem các chỉ số cộng thêm động và sự thay đổi Trait/Talent. | 2h | ⚡ Cao | `Done` |
 
 #### 📋 Epic 3: Bộ tính Tag Tuyển chọn - Recruitment Calculator (Thời gian ước lượng: ~5h)
 
