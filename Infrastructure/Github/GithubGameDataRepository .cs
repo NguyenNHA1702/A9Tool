@@ -405,7 +405,7 @@ namespace Infrastructure.Github
                 {
                     Id = x.Key,
                     Name = x.Value.Name,
-                    Rarity = x.Value.Rarity,
+                    Rarity = string.IsNullOrEmpty(x.Value.Rarity) ? "TIER_1" : x.Value.Rarity,
                     Profession = x.Value.Profession,
                     NationId = x.Value.NationId,
                     Position = x.Value.Position,
@@ -438,6 +438,7 @@ namespace Infrastructure.Github
 
             var raw = response[id];
             raw.Id = id;
+            if (string.IsNullOrEmpty(raw.Rarity)) raw.Rarity = "TIER_1";
             _logger.LogInformation("[GetCharacterDetailAsync] Loaded operator detail for {Name} ({Id})", raw.Name, id);
             return raw;
         }

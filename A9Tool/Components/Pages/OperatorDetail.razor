@@ -306,7 +306,7 @@ else
                                         <button class="od-elite-icon-btn @(elite == eIndex ? "active" : "")"
                                                 @onclick="() => OnEliteChanged(eIndex)"
                                                 title="Elite @eIndex">
-                                            <img src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/ui/elite/@(eIndex).png" alt="E@eIndex" />
+                                            <img src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/ui/elite/@(eIndex).png" alt="E@eIndex" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                                         </button>
                                     }
                                 </div>
@@ -369,7 +369,7 @@ else
                                         var firstLvl = sk.Levels?.FirstOrDefault();
                                         <div class="od-skill-tab-item @(selectedSkill == sIdx ? "active" : "")"
                                              @onclick="() => SelectSkill(sIdx)">
-                                            <img class="od-skill-tab-img" src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" />
+                                            <img class="od-skill-tab-img" src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                                             @if (selectedSkill == sIdx)
                                             {
                                                 <span class="od-skill-check">✓</span>
@@ -484,7 +484,7 @@ else
                                             var sk = skills[sIdx];
                                             var firstLvl = sk.Levels?.FirstOrDefault();
                                             <div class="od-skill-summary-item @(selectedSkill == sIdx ? "active" : "")">
-                                                <img src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" />
+                                                <img src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                                                 @if (selectedSkill == sIdx)
                                                 {
                                                     <span class="od-skill-check">✓</span>
@@ -551,7 +551,7 @@ else
                                                  @onclick="() => OnModuleSelected(mIdx)"
                                                  title="@mod.TypeName1">
                                                 <!-- Customization hook: Module icon path (e.g., /assets/icons/modules/...) -->
-                                                <img class="od-mod-slot-img" src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" />
+                                                <img class="od-mod-slot-img" src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                                                 @if (selectedModuleIndex == mIdx)
                                                 {
                                                     <span class="od-mod-check">✓</span>
@@ -657,7 +657,7 @@ else
                                             var mIdx = m + 1;
                                             var mod = modules[m];
                                             <div class="od-mod-mini-box @(selectedModuleIndex == mIdx ? "active" : "")">
-                                                <img src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" />
+                                                <img src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                                             </div>
                                         }
                                     }
@@ -765,7 +765,7 @@ else
                         <div class="od-mod-modal-header-left">
                             @if (!string.IsNullOrEmpty(GetModuleTypeIconUrl(CurrentModule)))
                             {
-                                <img class="od-mod-type-icon" src="@GetModuleTypeIconUrl(CurrentModule)" alt="Type Icon" />
+                                <img class="od-mod-type-icon" src="@GetModuleTypeIconUrl(CurrentModule)" alt="Type Icon" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                             }
                             <div class="od-mod-header-title-box">
                                 <span class="od-mod-code-badge">@(!string.IsNullOrEmpty(CurrentModule.TypeName1) ? $"{CurrentModule.TypeName1}{(string.IsNullOrEmpty(CurrentModule.TypeName2) ? "" : "-" + CurrentModule.TypeName2)}" : "MODULE")</span>
@@ -782,7 +782,7 @@ else
                             <!-- LEFT COLUMN: Module Art only -->
                             <div class="od-mod-wiki-left">
                                 <div class="od-mod-art-container">
-                                    <img class="od-mod-large-art" src="@GetModuleIconUrl(CurrentModule)" alt="@CurrentModule.UniEquipName" />
+                                    <img class="od-mod-large-art" src="@GetModuleIconUrl(CurrentModule)" alt="@CurrentModule.UniEquipName" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                                 </div>
                                 @if (!string.IsNullOrEmpty(CurrentModule.TypeName1))
                                 {
@@ -1164,9 +1164,24 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        var totalSw = System.Diagnostics.Stopwatch.StartNew();
+        var stepSw = new System.Diagnostics.Stopwatch();
+        int errCount = 0;
+        int warnCount = 0;
+
         try
         {
+            stepSw.Start();
             op = await service.GetByIdAsync(Id);
+            stepSw.Stop();
+
+            Logger?.LogInformation("{Header}", PipelineLogger.FormatHeader("PIPELINE START", op?.Name ?? Id ?? "Unknown", Id ?? ""));
+
+            // --- Step 1: Core Profile (15%) ---
+            string profileDetails = op != null
+                ? $"{op.Profession} | {op.Rarity?.Replace("TIER_", "")}★ | Phases: {op.Phases?.Count ?? 0} | Talents: {op.Talents?.Count ?? 0}"
+                : "Not Found";
+            Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(15, PipelineLogger.TagRamHit(), "Profile Core", profileDetails, stepSw.ElapsedMilliseconds));
 
             selectedSkill = 0;
             selectedModuleIndex = 0;
@@ -1193,44 +1208,92 @@ else
 
             if (op != null)
             {
-                // 1. Fetch Skills safely
+                // --- Step 2: Fetch Skills (40%) ---
+                stepSw.Restart();
                 try
                 {
                     skills = await service.GetSkillsForOperatorAsync(op);
+                    stepSw.Stop();
+                    Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(40, PipelineLogger.TagDiskHit("skill_table.json"), "Skills Loaded", $"{skills?.Count ?? 0} skills resolved & parsed", stepSw.ElapsedMilliseconds));
+
+                    if (skills != null)
+                    {
+                        for (int i = 0; i < skills.Count; i++)
+                        {
+                            var s = skills[i];
+                            var lv1 = s.Levels?.FirstOrDefault();
+                            Logger?.LogInformation("{SubItem}", PipelineLogger.FormatSubItem($"Skill {i + 1}", $"{lv1?.Name ?? s.SkillId} (Lv {s.Levels?.Count ?? 1}) | SP: {lv1?.SpCost} | {s.SkillType}", i == skills.Count - 1));
+                        }
+                    }
                 }
                 catch (Exception exSkill)
                 {
+                    errCount++;
                     Logger?.LogError(exSkill, "Error fetching skills for operator: {OperatorName}", op.Name);
                 }
 
-                // 2. Fetch Modules safely
+                // --- Step 3: Fetch Modules (65%) ---
+                stepSw.Restart();
                 try
                 {
                     modules = await service.GetModulesByOperatorAsync(op.Id);
+                    stepSw.Stop();
+                    Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(65, PipelineLogger.TagDiskHit("uniequip_table.json"), "Modules (UniEquip)", $"{modules?.Count ?? 0} modules mapped", stepSw.ElapsedMilliseconds));
+
+                    if (modules != null && modules.Count > 0)
+                    {
+                        for (int i = 0; i < modules.Count; i++)
+                        {
+                            var m = modules[i];
+                            Logger?.LogInformation("{SubItem}", PipelineLogger.FormatSubItem($"Mod {i + 1}", $"{m.UniEquipName} ({m.TypeName1})", i == modules.Count - 1));
+                        }
+                    }
                 }
                 catch (Exception exMod)
                 {
+                    errCount++;
                     Logger?.LogError(exMod, "Error fetching modules for operator: {OperatorName}", op.Name);
                 }
             }
 
-            // 3. Update Range safely (non-blocking for Skill/Module UI)
+            // --- Step 4: Attack Ranges (80%) ---
+            stepSw.Restart();
             try
             {
                 await UpdateRangeAsync();
+                stepSw.Stop();
+                string rangeInfo = activeRangeData != null ? $"Base [{activeRangeData.Grids?.Count ?? 0} tiles] mapped" : "Default";
+                if (activeSkillRangeData != null) rangeInfo += $" | Skill [{activeSkillRangeData.Grids?.Count ?? 0} tiles]";
+                Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(80, PipelineLogger.TagStatic("range_table.json"), "Attack Ranges", rangeInfo, stepSw.ElapsedMilliseconds));
             }
             catch (Exception exRange)
             {
+                warnCount++;
                 Logger?.LogWarning(exRange, "Error updating range data for operator: {OperatorName}", op?.Name);
             }
 
-            Logger?.LogInformation(
-                "[OnParametersSetAsync] Operator loaded: '{Name}' ({Id}) | E{Elite} LV{Level} Trust:{Trust} | Skills: {SkillCount} | Modules: {ModuleCount}",
-                op?.Name, Id, elite, currentLevel, selectedTrust, skills?.Count ?? 0, modules?.Count ?? 0);
+            // --- Step 5: Battle Stats (90%) ---
+            stepSw.Restart();
+            var stats = GetStatsAtTrust(GetRawStat(), selectedTrust);
+            stepSw.Stop();
+            Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(90, PipelineLogger.TagComputed(), "Battle Stats", $"E{elite} LV{currentLevel} Trust{selectedTrust}% -> HP: {stats.MaxHp} | ATK: {stats.Atk} | DEF: {stats.Def}", stepSw.ElapsedMilliseconds));
+
+            // --- Step 6: Visual Assets (100%) ---
+            stepSw.Restart();
+            currentBgUrl = GetImageUrl(Id, displayElite);
+            stepSw.Stop();
+            Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(100, PipelineLogger.TagDiskHit("Art Cache"), "Visual Assets", $"Background E{displayElite} resolved | Render ready", stepSw.ElapsedMilliseconds));
+
+            // --- Pipeline Complete ---
+            totalSw.Stop();
+            Logger?.LogInformation("{Footer}", PipelineLogger.FormatFooter(op?.Name ?? Id ?? "", totalSw.ElapsedMilliseconds, errCount, warnCount));
         }
         catch (Exception ex)
         {
+            errCount++;
+            totalSw.Stop();
             Logger?.LogError(ex, "Error fetching operator details for Id: {Id}", Id);
+            Logger?.LogInformation("{Footer}", PipelineLogger.FormatFooter(Id ?? "Unknown", totalSw.ElapsedMilliseconds, errCount, warnCount));
         }
     }
 
@@ -1255,7 +1318,7 @@ else
         0 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1.png",
         1 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_1%2B.png",
         2 => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/{id}/{id}_2.png",
-        _ => $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png"
+        _ => "/assets/icons/characterdetail/back_round.png"
     };
 
     private void OnImageError()
@@ -1266,7 +1329,7 @@ else
         }
         else
         {
-            currentBgUrl = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png";
+            currentBgUrl = "/assets/icons/characterdetail/back_round.png";
         }
     }
 

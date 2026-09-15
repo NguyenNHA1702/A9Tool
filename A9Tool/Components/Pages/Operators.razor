@@ -1,6 +1,8 @@
 @page "/operators"
+@using Core.Helpers
 @inject Core.Services.CharacterService service
 @inject NavigationManager Nav
+@inject ILogger<Operators> Logger
 
 <div class="max-w-[1400px] mx-auto p-6">
 
@@ -57,13 +59,13 @@
                     <img class="op-card-img"
                          @key="@($"img-{op.Id}")"
                          src="https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/@(id)_1.png"
-                         onerror="@($"this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/@(id).png';this.onerror=function(){{this.src='https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/{id}.png';}};")"
+                         onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'"
                          alt="@op.Name"
                          loading="lazy" />
 
                     <!-- Top Overlay Badge: Class Icon & Rarity Stars -->
                     <div class="op-card-top-badge rarity-badge-@(op.Rarity)">
-                        <img class="op-class-icon" src="@GetClassIconUrl(op.Profession)" alt="@op.Profession" />
+                        <img class="op-class-icon" src="@GetClassIconUrl(op.Profession)" alt="@op.Profession" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
                         <span class="op-stars-text">@FormatRarity(op.Rarity)</span>
                     </div>
 
@@ -85,7 +87,17 @@
     private string selectProfession = "";
 
     protected override async Task OnInitializedAsync()
-        => list = await service.GetAllAsync();
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Logger.LogInformation("{Header}", PipelineLogger.FormatHeader("CATALOG PIPELINE", "Operator Catalog", "All Operators"));
+        Logger.LogInformation("{Step}", PipelineLogger.FormatStep(50, PipelineLogger.TagDiskHit("operators.json"), "Disk Cache Read", "Fetching operators from repository cache..."));
+
+        list = await service.GetAllAsync();
+        sw.Stop();
+
+        Logger.LogInformation("{Step}", PipelineLogger.FormatStep(100, PipelineLogger.TagRamHit(), "Catalog Ready", $"{list?.Count ?? 0} operators loaded", sw.ElapsedMilliseconds));
+        Logger.LogInformation("{Footer}", PipelineLogger.FormatFooter("Operator Catalog", sw.ElapsedMilliseconds));
+    }
 
     private IEnumerable<Character> FilteredCharacters => list?
         .Where(c => string.IsNullOrEmpty(searchTerm) || (c.Name != null && c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
@@ -125,7 +137,7 @@
         "MEDIC" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_medic.png",
         "SUPPORT" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_supporter.png",
         "SPECIAL" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_specialist.png",
-        _ => "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/ui/storyreview/state/activity_review_detail_state/error-icon.png"
+        _ => "/assets/icons/characterdetail/back_round.png"
     };
 
     private async Task ResetCache()

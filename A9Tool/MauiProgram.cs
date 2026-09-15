@@ -3,28 +3,64 @@ using Core.Services;
 using Infrastructure.Github;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 using System;
 using System.IO;
 using System.Net.Http;
-using System.Runtime.InteropServices; // Required for AllocConsole
+using System.Runtime.InteropServices;
 
 namespace A9Tool
 {
     public static class MauiProgram
     {
-        // Import the native Windows API to allocate a command prompt window
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool AllocConsole();
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GetStdHandle(int nStdHandle);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+
+        private const int STD_OUTPUT_HANDLE = -11;
+        private const uint ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+
+        private static void EnableVirtualTerminal()
+        {
+            var handle = GetStdHandle(STD_OUTPUT_HANDLE);
+            if (GetConsoleMode(handle, out uint mode))
+            {
+                SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+            }
+        }
+
         public static MauiApp CreateMauiApp()
         {
 #if DEBUG && WINDOWS
-            // This forces Windows to spin up a command prompt window side-by-side with your app UI
+            // Force Windows to allocate command prompt window side-by-side with app UI
             AllocConsole();
+            EnableVirtualTerminal();
 #endif
 
+            // Initialize Serilog with ANSI Console theme for colored, structured logging
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(
+                    theme: AnsiConsoleTheme.Code,
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+
             var builder = MauiApp.CreateBuilder();
+
+            // Register Serilog as the primary logging provider
+            builder.Logging.ClearProviders();
+            builder.Logging.AddSerilog(dispose: true);
+
             builder
                 .UseMauiApp<App>()
                 .ConfigureFonts(fonts =>
@@ -58,17 +94,9 @@ namespace A9Tool
             });
 
             builder.Services.AddScoped<CharacterService>();
-            builder.Services.AddSingleton<ImageService>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
-            builder.Logging.AddDebug();
-
-            // Configures console logging formatting identically to a standard .NET Web API
-            builder.Logging.AddConsole(options =>
-            {
-                options.TimestampFormat = "[HH:mm:ss] ";
-            });
 #endif
 
             return builder.Build();
