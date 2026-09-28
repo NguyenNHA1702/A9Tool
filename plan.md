@@ -1,488 +1,462 @@
-# 📑 Hướng Dẫn & Kế Hoạch Triển Khai Toàn Bộ Epic 5 (Tự Code)
+# 📑 Kế Hoạch Triển Khai Chi Tiết: Hướng 1 (Nguyên Liệu) ➡️ Hướng 2 (Recruitment) ➡️ Bio Hub
 
-> [!TIP]
-> Bản kế hoạch này bao gồm toàn bộ các task còn lại của **Epic 5: Tải và Quản lý Tài nguyên Offline**:
-> * **A9-502:** Tải offline Icons (Skill & Module)
-> * **A9-503:** Cơ chế fallback hình ảnh thông minh (On-Demand Lazy Cache 2 lớp)
-> * **A9-504:** Chuẩn hóa Error Handling cho `GameDataRepository` & `CharacterService`
-
----
-
-## 1. 📋 Bảng Tổng Hợp Các File Cần Tạo & Sửa
-
-| STT | File / Đường Dẫn | Thao Tác | Task | Mục Đích |
-| :---: | :--- | :---: | :---: | :--- |
-| 1 | [ImageService.cs](file:///d:/VS_Studio/A9Tools/A9Tool/Core/Services/ImageService.cs) | `[SỬA/HOÀN THIỆN]` | A9-503, A9-502 | Service quản lý cache ảnh 2 lớp (L1 RAM + L2 Disk), Base64 Data URI, SemaphoreSlim lock chống race condition, prefetch. |
-| 2 | [MauiProgram.cs](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/MauiProgram.cs) | `[SỬA]` | A9-503 | Đăng ký `ImageService` bằng Factory truyền `FileSystem.CacheDirectory`, xóa dòng đăng ký trùng. |
-| 3 | [LazyImage.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Common/LazyImage.razor) | `[NEW]` | A9-503 | Component Razor hiển thị ảnh mượt mà, có placeholder loading và nạp Data URI từ `ImageService`. |
-| 4 | [Operators.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/Operators.razor) | `[SỬA]` | A9-503 | Đổi thẻ `<img>` portrait sang dùng `<LazyImage />` (cuộn tới đâu tải & cache tới đó). |
-| 5 | [OperatorDetail.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor) | `[SỬA]` | A9-503, A9-502 | Cache Art E0/E1/E2, Skill Icons, Module Icons qua `ImageService`. Giữ nguyên icon tĩnh `/assets/...`. |
-| 6 | [CharacterService.cs](file:///d:/VS_Studio/A9Tools/A9Tool/Core/Services/CharacterService.cs) | `[SỬA]` | A9-504 | Null-check an toàn cho `skillTable`, `uniEquipData`, tránh văng `NullReferenceException`. |
-| 7 | [GithubGameDataRepository .cs](file:///d:/VS_Studio/A9Tools/A9Tool/Infrastructure/Github/GithubGameDataRepository%20.cs) | `[SỬA]` | A9-504 | Try-catch an toàn trong `GetUniEquipTableAsync`, `GetBattleEquipTableAsync`, ưu tiên đọc local cache đĩa nếu lỗi mạng. |
-| 8 | [README.md](file:///d:/VS_Studio/A9Tools/A9Tool/README.md) | `[SỬA]` | Epic 5 | Đánh dấu hoàn thành `[x]` cho toàn bộ Epic 5. |
+> [!IMPORTANT]
+> Bản kế hoạch này hướng dẫn chi tiết từng bước thực hiện:
+> 1. **Bước 1: Làm trước Hướng 1 (Hệ thống Vật phẩm & Nguyên liệu `item_table.json`)** để mở khóa toàn bộ bảng Materials trên trang Operator Detail và tạo nền tảng Planner.
+> 2. **Bước 2: Làm tiếp Hướng 2 (Bộ tính Tag Tuyển chọn - Recruitment Calculator)** với thuật toán tổ hợp chuẩn cộng đồng (Aceship/Gamepress/PRTS).
+> 3. **Bước 3: Triển khai Tab Bio (Skins, Voice Lines, Handbook)** ngay sau khi hoàn thành 2 hướng trên.
 
 ---
 
-## 2. Chi Tiết Phần I: Chuẩn Hóa `ImageService.cs`
+## 🗺️ Tổng Quan Kiến Trúc & Thứ Tự Thực Hiện
 
-> **Vị trí file:** `Core/Services/ImageService.cs`  
-> **Namespace:** `Core.Services`
+```mermaid
+flowchart TD
+    Current["✅ ĐÃ XONG: Wiki Core (Skills, Modules, Missions, Offline Cache)"]
+    
+    Current --> Step1["🌟 BƯỚC 1: HƯỚNG 1 (Hệ thống Vật Phẩm - A9-401)<br>• Nạp & cache item_table.json<br>• Tạo component ItemBadge.razor<br>• Render Materials Required trong Operator Detail"]
+    
+    Step1 --> Step2["🎯 BƯỚC 2: HƯỚNG 2 (Recruitment Calculator - Epic 3)<br>• Thuật toán tổ hợp C(n, k) k=1..3<br>• Lọc pool & Quy tắc Top/Senior Operator<br>• Giao diện ma trận chọn Tag & Bảng kết quả"]
+    
+    Step2 --> Step3["📖 BƯỚC 3: HỒ SƠ BIO (Epic 4.5 - Kích hoạt Tab Bio)<br>• Skins & Phòng tranh Splash Art (skin_table.json)<br>• Audio Player câu thoại đa ngôn ngữ (charword_table.json)<br>• Hồ sơ Handbook & Cốt truyện (handbook_info_table.json)"]
+```
 
-### 2.1. Mã Nguồn Đầy Đủ & Chuẩn Xác Cho `ImageService.cs`
+---
+
+# 🌟 PHẦN 1: HƯỚNG DẪN CHI TIẾT HƯỚNG 1 — HỆ THỐNG VẬT PHẨM & NGUYÊN LIỆU (A9-401)
+
+### 1.1. Mục Tiêu Kỹ Thuật
+1. Nạp và lưu trữ bảng `item_table.json` chứa danh mục vật phẩm (nguyên liệu đá, gel, thiết bị, LMD, chip thăng cấp...).
+2. Tạo component hiển thị vật phẩm chuẩn phong cách Arknights: `<ItemBadge.razor />` có viền màu theo độ hiếm (Tier 1 trắng, Tier 2 xanh lục, Tier 3 xanh lam, Tier 4 tím, Tier 5 cam/vàng), số lượng đính kèm và tooltip xem tên.
+3. Mở khóa khối `<!-- Materials Table -->` đang bị ẩn tại [OperatorDetail.razor:974](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor#L974) để hiển thị chi phí nâng cấp Module (Stage 1, 2, 3).
+
+---
+
+### 1.2. Cấu Trúc Dữ Liệu `ItemData` (Core Layer)
+Tạo file mới: `Core/Models/Entities/ItemData.cs`
 
 ```csharp
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Net.Http;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
-namespace Core.Services
+namespace Core.Models.Entities
 {
-    public class ImageService
+    public class ItemData
     {
-        // 1. HttpClient tải mảng byte ảnh từ CDN
-        private readonly HttpClient _httpClient;
+        [JsonPropertyName("itemId")]
+        public string? ItemId { get; set; }
 
-        // 2. Logger theo dõi thông tin cache trên console
-        private readonly ILogger<ImageService> _logger;
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
 
-        // 3. Đường dẫn thư mục gốc lưu ảnh trên ổ cứng
-        private readonly string _baseCachePath;
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
 
-        // 4. L1 RAM Cache: Lưu Base64 Data URI trong bộ nhớ (0ms)
-        private readonly ConcurrentDictionary<string, string> _memoryCache = new();
+        [JsonPropertyName("rarity")]
+        public object? RawRarity { get; set; } // Game trả về "TIER_1".."TIER_5" hoặc số nguyên 0..4
 
-        // 5. Khóa SemaphoreSlim cho từng URL để chống Race Condition khi nhiều component tải cùng lúc
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
+        [JsonPropertyName("iconId")]
+        public string? IconId { get; set; }
 
-        public ImageService(HttpClient httpClient, ILogger<ImageService> logger, string baseCachePath)
-        {
-            _httpClient = httpClient;
-            _logger = logger;
-            _baseCachePath = baseCachePath;
+        [JsonPropertyName("sortId")]
+        public int SortId { get; set; }
 
-            if (!Directory.Exists(_baseCachePath))
-            {
-                Directory.CreateDirectory(_baseCachePath);
-            }
-        }
+        [JsonPropertyName("classifyType")]
+        public string? ClassifyType { get; set; }
 
         /// <summary>
-        /// Băm URL thành chuỗi hex MD5 32 ký tự để làm tên file an toàn trên hệ điều hành.
+        /// Trả về bậc độ hiếm chuẩn từ 1 đến 5 (1: Thường ... 5: Cực hiếm).
         /// </summary>
-        private static string GetHashedFileName(string url)
+        [JsonIgnore]
+        public int RarityTier
         {
-            using var md5 = MD5.Create();
-            byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(url));
-            var sb = new StringBuilder();
-            foreach (byte b in hash) sb.Append(b.ToString("x2"));
-
-            string ext = Path.GetExtension(url.Split('?')[0]);
-            if (string.IsNullOrEmpty(ext) || ext.Length > 5) ext = ".png";
-            return sb.ToString() + ext;
-        }
-
-        /// <summary>
-        /// Chuyển byte[] thành Base64 Data URI để thẻ <img> hiển thị trực tiếp mà không bị WebView chặn.
-        /// </summary>
-        private static string ToDataUri(byte[] bytes)
-        {
-            return $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
-        }
-
-        /// <summary>
-        /// Tải byte[] từ mạng an toàn có Timeout (15s) tránh treo app.
-        /// </summary>
-        private async Task<byte[]?> DownloadBytesSafeAsync(string url, int timeoutSeconds = 15)
-        {
-            try
+            get
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-                return await _httpClient.GetByteArrayAsync(url, cts.Token);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[ImageCache] Download error for {Url}: {Message}", url, ex.Message);
-                return null;
+                if (RawRarity == null) return 1;
+                var str = RawRarity.ToString();
+                if (int.TryParse(str, out var num)) return num + 1;
+                return str switch
+                {
+                    "TIER_1" => 1,
+                    "TIER_2" => 2,
+                    "TIER_3" => 3,
+                    "TIER_4" => 4,
+                    "TIER_5" => 5,
+                    _ => 1
+                };
             }
         }
+    }
 
-        /// <summary>
-        /// Phương thức chính: Lấy ảnh theo quy trình RAM (L1) -> Disk (L2) -> Semaphore Lock -> Network Download -> Fallback.
-        /// </summary>
-        public async Task<string> GetImageAsync(string? url, string? fallbackUrl = null, string category = "general")
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return fallbackUrl ?? "";
-            }
-
-            // 1. Kiểm tra L1 RAM Cache (0ms)
-            if (_memoryCache.TryGetValue(url, out var memoryDataUri))
-            {
-                return memoryDataUri;
-            }
-
-            // 2. Xác định đường dẫn file L2 Disk: _baseCachePath/{category}/{fileName}
-            string categoryFolder = Path.Combine(_baseCachePath, category);
-            if (!Directory.Exists(categoryFolder))
-            {
-                Directory.CreateDirectory(categoryFolder);
-            }
-
-            string fileName = GetHashedFileName(url);
-            string filePath = Path.Combine(categoryFolder, fileName);
-
-            // Kiểm tra L2 Disk Cache (Lưu ý: Phải là File.Exists, KHÔNG có dấu !)
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    byte[] bytes = await File.ReadAllBytesAsync(filePath);
-                    string dataUri = ToDataUri(bytes);
-                    _memoryCache[url] = dataUri;
-                    return dataUri;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "[ImageCache] Error reading cached file: {Path}", filePath);
-                }
-            }
-
-            // 3. Cache Miss: Khóa Semaphore chống tải trùng cho URL này
-            var sem = _locks.GetOrAdd(url, _ => new SemaphoreSlim(1, 1));
-            await sem.WaitAsync();
-            try
-            {
-                // Double-check sau khi vào lock
-                if (_memoryCache.TryGetValue(url, out memoryDataUri))
-                {
-                    return memoryDataUri;
-                }
-
-                if (File.Exists(filePath))
-                {
-                    byte[] bytes = await File.ReadAllBytesAsync(filePath);
-                    string dataUri = ToDataUri(bytes);
-                    _memoryCache[url] = dataUri;
-                    return dataUri;
-                }
-
-                // Tải từ URL chính
-                byte[]? downloadedBytes = await DownloadBytesSafeAsync(url);
-
-                // Nếu URL chính lỗi, thử fallbackUrl
-                if (downloadedBytes == null && !string.IsNullOrEmpty(fallbackUrl) && fallbackUrl != url)
-                {
-                    _logger.LogWarning("[ImageCache] Primary URL failed, trying fallback: {Url}", fallbackUrl);
-                    downloadedBytes = await DownloadBytesSafeAsync(fallbackUrl);
-                }
-
-                if (downloadedBytes != null && downloadedBytes.Length > 0)
-                {
-                    await File.WriteAllBytesAsync(filePath, downloadedBytes);
-                    string dataUri = ToDataUri(downloadedBytes);
-                    _memoryCache[url] = dataUri;
-                    _logger.LogInformation("[ImageCache Saved] {Category}/{File} ({Size} KB)", category, fileName, downloadedBytes.Length / 1024);
-                    return dataUri;
-                }
-            }
-            finally
-            {
-                sem.Release();
-            }
-
-            // Nếu thất bại hoàn toàn, trả về fallbackUrl hoặc url gốc
-            return fallbackUrl ?? url;
-        }
-
-        /// <summary>
-        /// A9-502: Tải trước icon/ảnh chạy ngầm (fire-and-forget), không chặn luồng UI.
-        /// </summary>
-        public void PrefetchImage(string? url, string? fallbackUrl = null, string category = "general")
-        {
-            if (string.IsNullOrWhiteSpace(url)) return;
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await GetImageAsync(url, fallbackUrl, category);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "[ImageCache] Prefetch failed for: {Url}", url);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Tính tổng dung lượng thư mục cache ảnh (bytes).
-        /// </summary>
-        public Task<long> GetCacheSizeBytesAsync()
-        {
-            return Task.Run(() =>
-            {
-                if (!Directory.Exists(_baseCachePath)) return 0L;
-                var dirInfo = new DirectoryInfo(_baseCachePath);
-                long size = 0;
-                foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
-                {
-                    size += file.Length;
-                }
-                return size;
-            });
-        }
-
-        /// <summary>
-        /// Dọn dẹp toàn bộ cache RAM và thư mục ổ đĩa.
-        /// </summary>
-        public Task ClearCacheAsync()
-        {
-            return Task.Run(() =>
-            {
-                _memoryCache.Clear();
-                if (Directory.Exists(_baseCachePath))
-                {
-                    try
-                    {
-                        Directory.Delete(_baseCachePath, true);
-                        Directory.CreateDirectory(_baseCachePath);
-                        _logger.LogInformation("[ImageCache] Successfully cleared all cached images.");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "[ImageCache] Failed to delete cache folder: {Message}", ex.Message);
-                    }
-                }
-            });
-        }
+    public class ItemTableResponse
+    {
+        [JsonPropertyName("items")]
+        public Dictionary<string, ItemData> Items { get; set; } = new();
     }
 }
 ```
 
 ---
 
-## 3. Chi Tiết Phần II: Tầng Giao Diện Blazor & Đăng Ký DI
-
-### 3.1. Đăng ký DI trong `MauiProgram.cs`
-
-Mở file [MauiProgram.cs](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/MauiProgram.cs):
-> [!IMPORTANT]
-> Vì `ImageService` cần tham số constructor `baseCachePath`, ta **phải dùng Factory Delegate** để truyền `FileSystem.CacheDirectory`. **Xóa bỏ** bất kỳ dòng `builder.Services.AddSingleton<ImageService>();` nào bị khai báo dư.
-
-```csharp
-// Đăng ký ImageService dạng Singleton với đường dẫn thư mục cache
-builder.Services.AddSingleton<ImageService>(sp =>
-{
-    var http = sp.GetRequiredService<HttpClient>();
-    var logger = sp.GetRequiredService<ILogger<ImageService>>();
-    string cachePath = Path.Combine(FileSystem.CacheDirectory, "A9ToolImages");
-    return new ImageService(http, logger, cachePath);
-});
-```
+### 1.3. Bổ Sung Repository & Cache (Infrastructure Layer)
+* **File:** `Core/Interfaces/IGameDataRepository.cs`
+  ```csharp
+  Task<Dictionary<string, ItemData>?> GetItemTableAsync();
+  ```
+* **File:** `Infrastructure/Github/GithubGameDataRepository .cs`
+  * URL nguồn: `https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/item_table.json`
+  * Logic nạp:
+    1. Kiểm tra cache đĩa `item_table.json` (hợp lệ trong 24 giờ).
+    2. Nếu miss/lỗi, tải từ CDN ArknightsGamedata và lưu đĩa.
+    3. Trả về `Dictionary<string, ItemData>` với độ an toàn cao (try-catch, log cảnh báo).
 
 ---
 
-### 3.2. Tạo Component `LazyImage.razor`
-
-Tạo file mới tại: `A9Tool/Components/Common/LazyImage.razor`  
-*(Nếu chưa có thư mục `Common`, hãy tạo thư mục `A9Tool/Components/Common`)*
+### 1.4. Thiết Kế Component `ItemBadge.razor` (Presentation Layer)
+Tạo file mới: `A9Tool/Components/Common/ItemBadge.razor`
 
 ```razor
-@using Core.Services
-@inject ImageService ImageService
+@using Core.Models.Entities
+@inject Core.Services.CharacterService CharacterService
 
-@if (string.IsNullOrEmpty(currentSrc))
-{
-    <!-- Hiển thị khung xám placeholder khi ảnh đang tải -->
-    <div class="lazy-image-placeholder @Class" style="@Style"></div>
-}
-else
-{
-    <img src="@currentSrc"
-         class="@Class"
-         style="@Style"
-         alt="@Alt"
-         @attributes="AdditionalAttributes" />
-}
+<div class="a9-item-badge tier-@Tier" title="@DisplayName">
+    <div class="a9-item-icon-box">
+        <img class="a9-item-img" src="@IconUrl" alt="@DisplayName" loading="lazy" />
+        <span class="a9-item-tier-bar"></span>
+    </div>
+    @if (Count > 0)
+    {
+        <div class="a9-item-count">@FormatCount(Count)</div>
+    }
+</div>
 
 @code {
-    [Parameter] public string? Src { get; set; }
-    [Parameter] public string? FallbackSrc { get; set; }
-    [Parameter] public string Category { get; set; } = "general";
-    [Parameter] public string? Class { get; set; }
-    [Parameter] public string? Style { get; set; }
-    [Parameter] public string? Alt { get; set; }
+    [Parameter] public string? ItemId { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public string? CustomName { get; set; }
 
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object>? AdditionalAttributes { get; set; }
-
-    private string? currentSrc;
-    private string? lastRequestedSrc;
+    private ItemData? itemInfo;
 
     protected override async Task OnParametersSetAsync()
     {
-        // Tránh gọi lại khi component re-render nhưng Src không đổi
-        if (Src == lastRequestedSrc && !string.IsNullOrEmpty(currentSrc))
+        if (!string.IsNullOrEmpty(ItemId))
         {
-            return;
+            itemInfo = await CharacterService.GetItemAsync(ItemId);
         }
-
-        lastRequestedSrc = Src;
-
-        if (string.IsNullOrWhiteSpace(Src))
-        {
-            currentSrc = FallbackSrc;
-            return;
-        }
-
-        // Lấy Base64 Data URI từ ImageService (RAM -> Disk -> Tải mạng)
-        currentSrc = await ImageService.GetImageAsync(Src, FallbackSrc, Category);
-        StateHasChanged();
     }
+
+    private int Tier => itemInfo?.RarityTier ?? 1;
+    private string DisplayName => CustomName ?? itemInfo?.Name ?? ItemId ?? "Item";
+    private string IconUrl => !string.IsNullOrEmpty(itemInfo?.IconId)
+        ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/items/icons/{itemInfo.IconId}.png"
+        : (!string.IsNullOrEmpty(ItemId) ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/items/icons/{ItemId}.png" : "/assets/icons/characterdetail/sprite_profession.png");
+
+    private string FormatCount(int c) => c >= 10000 ? $"{c / 1000}k" : c.ToString();
 }
 ```
 
 ---
 
-### 3.3. Áp Dụng Vào `Operators.razor`
-
-Mở file [Operators.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/Operators.razor):
-Thay thế thẻ `<img>` portrait bằng `<LazyImage />`:
+### 1.5. Mở Khóa Giao Diện Trong `OperatorDetail.razor`
+Tại dòng 974, gỡ comment và render bảng nguyên liệu cho Module:
 
 ```razor
-<A9Tool.Components.Common.LazyImage 
-    Class="op-card-img"
-    Src="@($"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{id}_1.png")"
-    FallbackSrc="@($"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{id}.png")"
-    Category="avatars"
-    Alt="@op.Name" />
-```
-
----
-
-### 3.4. Áp Dụng Vào `OperatorDetail.razor` (A9-502 & A9-503)
-
-Mở file [OperatorDetail.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor):
-1. **Inject Service ở đầu file:**
-   ```razor
-   @inject Core.Services.ImageService ImageService
-   ```
-
-2. **Cache Art E0/E1/E2:**
-   Khi đổi sang E0/E1/E2 hoặc lúc nạp trang, lấy ảnh qua `ImageService`:
-   ```csharp
-   currentBgUrl = await ImageService.GetImageAsync(remoteUrl, fallbackUrl, "characters");
-   ```
-
-3. **Prefetch Skill & Module Icons (Task A9-502):**
-   Ngay trong sự kiện nạp Operator (`OnInitializedAsync` hoặc sau khi lấy xong dữ liệu Operator), kích hoạt tải trước icon ngầm để khi bấm sang tab Skill/Module icon đã có sẵn:
-   ```csharp
-   if (operatorData?.Skills != null)
-   {
-       foreach (var skill in operatorData.Skills)
-       {
-           string skillIconUrl = GetSkillImageUrl(skill.IconId);
-           ImageService.PrefetchImage(skillIconUrl, category: "skills");
-       }
-   }
-   ```
-
-4. **Skill Icons & Module Icons trên giao diện:**
-   Thay vì dùng `<img src="..." />`, dùng `<LazyImage />`:
-   ```razor
-   <A9Tool.Components.Common.LazyImage 
-       Src="@GetSkillImageUrl(s.IconId)" 
-       Category="skills" 
-       Class="skill-icon" 
-       Alt="@s.Name" />
-   ```
-
-5. **Icon tĩnh nội bộ:**
-   Giữ nguyên toàn bộ các icon tĩnh `/assets/icons/...` (HP, ATK, DEF, icon Class) vì nằm sẵn trong bundle của app.
-
----
-
-## 4. Chi Tiết Phần III: Chuẩn Hóa Error Handling (A9-504)
-
-### 4.1. Sửa `Core/Services/CharacterService.cs`
-
-Trong hàm `GetSkillsForOperatorAsync`, tránh crash `NullReferenceException` khi `skillTable` bị null:
-
-```csharp
-var skillTable = await _gameDataRepository.GetSkillTableAsync();
-if (skillTable == null || op.Skills == null)
+<!-- Materials Box (Module Stage 1, 2, 3) -->
+@if (CurrentModule != null && CurrentModule.ItemCost != null && CurrentModule.ItemCost.Count > 0)
 {
-    _logger.LogWarning("[GetSkillsForOperatorAsync] SkillTable is null or operator has no skills.");
-    return list;
-}
-
-foreach (var skill in op.Skills)
-{
-    if (string.IsNullOrEmpty(skill.SkillId) || !skillTable.TryGetValue(skill.SkillId, out var returnSkill))
-    {
-        _logger.LogWarning("Skill {SkillId} not found in skill table", skill.SkillId);
-        continue;
-    }
-    // Xử lý nạp skill bình thường...
-}
-```
-
----
-
-### 4.2. Sửa `Infrastructure/Github/GithubGameDataRepository .cs`
-
-Bọc `try-catch` và fallback đọc file cache local cho `GetUniEquipTableAsync` và `GetBattleEquipTableAsync`:
-
-```csharp
-public async Task<Dictionary<string, UniEquipData>?> GetUniEquipTableAsync()
-{
-    if (_cachedUniEquipData != null) return _cachedUniEquipData;
-
-    string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
-
-    try
-    {
-        var response = await LoadTableAsync<UniEquipData>(localpath, "uniequip_table", "uniequip_table.fbs");
-        _logger.LogInformation("[GetUniEquipTableAsync] Loaded {Count} records.", response?.Count ?? 0);
-        _cachedUniEquipData = response;
-        return response;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogWarning(ex, "[GetUniEquipTableAsync] Failed to load uniequip_table. Checking local disk fallback...");
-        if (File.Exists(localpath))
-        {
-            try
+    <div class="od-mod-materials-box">
+        <div class="od-mod-box-header">Materials Required</div>
+        <div class="od-mod-mat-stages">
+            @for (int stage = 1; stage <= CurrentModule.ItemCost.Count; stage++)
             {
-                var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
-                var dict = ParseFlatBuffersJsonToDictionary<UniEquipData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                _cachedUniEquipData = dict;
-                return dict;
+                var stageCosts = GetModuleStageCosts(CurrentModule, stage);
+                <div class="od-mod-stage-cost-row">
+                    <span class="od-mod-stage-tag">STAGE @stage</span>
+                    <div class="od-mod-stage-items">
+                        @foreach (var bundle in stageCosts)
+                        {
+                            <ItemBadge ItemId="@bundle.Id" Count="@bundle.Count" />
+                        }
+                    </div>
+                </div>
             }
-            catch { }
+        </div>
+    </div>
+}
+```
+
+---
+
+# 🎯 PHẦN 2: HƯỚNG DẪN CHI TIẾT HƯỚNG 2 — BỘ TÍNH TAG TUYỂN CHỌN (RECRUITMENT CALCULATOR)
+
+> [!TIP]
+> **Tham khảo tiêu chuẩn cộng đồng (Aceship / Gamepress / PRTS):**
+> Trong Arknights, tuyển dụng (Recruitment) cho phép chọn tối đa **3 Tags** từ bảng 5 Tags hiển thị ngẫu nhiên và chọn thời gian (thường đặt tối đa **9 giờ** để không bị gạch tag).
+> Mục tiêu chính của người chơi khi dùng công cụ là: **"Liệu trong 5 tag này có tổ hợp nào cam kết (guaranteed) ra 4★, 5★ hoặc 6★ hay không?"**
+
+---
+
+### 2.1. Phân Loại Hệ Thống Tags Trong Game
+Có tổng cộng **28 Tags** được phân thành 4 nhóm rõ rệt:
+
+1. **Nhóm Cấp Bậc / Tư Cách (Qualifications):**
+   * `Top Operator` (Cấp tối cao) ➡️ **Cam kết 6★** (Chỉ 6★ mới có tag này).
+   * `Senior Operator` (Cấp cao) ➡️ **Cam kết 5★**.
+   * `Starter` (Tân thủ) ➡️ 2★ (12F, Rangers, Noir Corne, Durin, Yato).
+   * `Robot` (Người máy) ➡️ 1★ (Castle-3, Lancet-2, THRM-EX, Justice Knight...).
+2. **Nhóm Vị Trí (Position):**
+   * `Melee` (Cận chiến)
+   * `Ranged` (Đánh xa)
+3. **Nhóm Chức Nghiệp (Classes):**
+   * `Vanguard`, `Guard`, `Defender`, `Sniper`, `Caster`, `Medic`, `Supporter`, `Specialist`.
+4. **Nhóm Đặc Điểm / Lối Đánh (Archetypes / Afflictions):**
+   * `Healing`, `DPS`, `Defense`, `Survival`, `AoE`, `Slow`, `Crowd-Control`, `Fast-Redeploy`, `Shift`, `Debuff`, `Support`, `DP-Recovery`, `Nuker`, `Summon`.
+
+---
+
+### 2.2. Thuật Toán Cốt Lõi (Core Algorithm)
+
+#### 🔹 Quy tắc 1: Lọc Danh Sách Tuyển Dụng (Recruit Pool)
+Không phải tất cả Operator đều có trong tuyển dụng (các nhân vật sự kiện, banner giới hạn không có trong pool).
+Mỗi Operator trong Pool có tập thuộc tính:
+$$\text{OpTags} = \text{TagList} \cup \{\text{Position}\} \cup \{\text{Class}\} \cup \{\text{RarityTag}\}$$
+
+#### 🔹 Quy tắc 2: Sinh Tổ Hợp (Combinations Generation)
+Người dùng bấm chọn một tập các tag đã xuất hiện: $S = \{\text{Tag}_1, \text{Tag}_2, ..., \text{Tag}_m\}$ với $m \le 5$.
+Thuật toán sinh ra tất cả các tập con $T \subseteq S$ có độ dài từ 1 đến 3:
+$$\text{Total Subsets} = \binom{m}{1} + \binom{m}{2} + \binom{m}{3}$$
+*(Ví dụ nếu chọn 5 tag, tổng số tổ hợp cần kiểm tra là $5 + 10 + 10 = 25$ tổ hợp).*
+
+#### 🔹 Quy tắc 3: So Khớp Tổ Hợp (Matching Logic) & Luật Loại Trừ 6★
+Với mỗi tổ hợp tag $T$, tìm danh sách Operator thỏa mãn:
+$$T \subseteq \text{OpTags}$$
+> [!CAUTION]
+> **Luật sống còn của 6★:**
+> * Nếu $T$ **CÓ** chứa tag `"Top Operator"`: Chỉ các Operator **6★** thỏa mãn mới được trả về.
+> * Nếu $T$ **KHÔNG** chứa tag `"Top Operator"`: Toàn bộ Operator **6★** **BẮT BUỘC BỊ LOẠI BỎ** (kể cả khi các tag khác như `Melee`, `Guard`, `DPS` trùng khớp với SilverAsh/Ch'en), vì game sẽ không bao giờ ra 6★ nếu không có tag Top Operator.
+
+#### 🔹 Quy tắc 4: Xác Định Độ Cam Kết (Guaranteed Tier)
+Với mỗi tổ hợp $T$ có danh sách Operator thỏa mãn:
+* $\text{MinRarity} = \min_{op \in \text{Matches}} (op.\text{RarityTier})$
+* $\text{MaxRarity} = \max_{op \in \text{Matches}} (op.\text{RarityTier})$
+* **Phân loại độ cam kết:**
+  * **Top Guaranteed (6★):** Tổ hợp chứa `Top Operator` ➡️ Background vàng viền kim loại.
+  * **Senior Guaranteed (5★):** $\text{MinRarity} == 5$ hoặc chứa `Senior Operator` ➡️ Background tím ánh sáng.
+  * **Guaranteed 4★+:** $\text{MinRarity} \ge 4$ (không có 3★ nào lọt vào kết quả) ➡️ Background đỏ/cam nổi bật.
+  * **Normal (Có thể ra 3★):** $\text{MinRarity} < 4$ ➡️ Hiển thị thông thường.
+
+#### 🔹 Quy tắc 5: Sắp Xếp Kết Quả Ưu Tiên (Ranking Combinations)
+Các tổ hợp trả ra được sắp xếp theo thứ tự:
+1. Có 6★ cam kết (Top Operator).
+2. Có 5★ cam kết (Senior / combo độc quyền như `Crowd-Control`, `Debuff + Fast-Redeploy`...).
+3. Có 4★ cam kết (như `Fast-Redeploy`, `Shift`, `Debuff`, `Specialist + Survival`...).
+4. Số lượng tag trong combo giảm dần ($3 \rightarrow 2 \rightarrow 1$).
+
+---
+
+### 2.3. Cấu Trúc Mã Nguồn `RecruitmentService.cs`
+
+Tạo file mới: `Core/Services/RecruitmentService.cs`
+
+```csharp
+using Core.Models.Entities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Core.Services
+{
+    public class RecruitmentCombinationResult
+    {
+        public List<string> Tags { get; set; } = [];
+        public List<Character> MatchedOperators { get; set; } = [];
+        public int MinRarity { get; set; }
+        public int MaxRarity { get; set; }
+        public bool IsGuaranteed4Plus => MinRarity >= 4;
+        public bool Has5Star => MatchedOperators.Any(o => GetTier(o.Rarity) == 5);
+        public bool Has6Star => MatchedOperators.Any(o => GetTier(o.Rarity) == 6);
+
+        public static int GetTier(string? r) => r switch
+        {
+            "TIER_6" => 6,
+            "TIER_5" => 5,
+            "TIER_4" => 4,
+            "TIER_3" => 3,
+            "TIER_2" => 2,
+            "TIER_1" => 1,
+            _ => 1
+        };
+    }
+
+    public class RecruitmentService
+    {
+        private readonly CharacterService _characterService;
+
+        public RecruitmentService(CharacterService characterService)
+        {
+            _characterService = characterService;
         }
-        return new Dictionary<string, UniEquipData>();
+
+        /// <summary>
+        /// Phân tích và tìm tất cả tổ hợp thỏa mãn từ danh sách tag được chọn.
+        /// </summary>
+        public async Task<List<RecruitmentCombinationResult>> CalculateCombinationsAsync(List<string> selectedTags)
+        {
+            if (selectedTags == null || selectedTags.Count == 0) return [];
+
+            // 1. Lấy toàn bộ danh sách Operator trong game
+            var allOps = await _characterService.GetAllAsync();
+            // Lọc các Operator nằm trong Recruitment pool (loại trừ các Op event/limited)
+            var recruitPool = FilterRecruitmentPool(allOps);
+
+            // 2. Sinh tất cả tổ hợp k = 1, 2, 3 từ selectedTags
+            var combos = GenerateCombinations(selectedTags, maxK: 3);
+            var results = new List<RecruitmentCombinationResult>();
+
+            foreach (var combo in combos)
+            {
+                bool hasTopOp = combo.Contains("Top Operator", StringComparer.OrdinalIgnoreCase);
+
+                var matched = recruitPool.Where(op =>
+                {
+                    int tier = RecruitmentCombinationResult.GetTier(op.Rarity);
+
+                    // Luật sống còn: 6★ chỉ xuất hiện nếu có tag Top Operator
+                    if (tier == 6 && !hasTopOp) return false;
+
+                    var opTags = GetOperatorAllTags(op);
+                    // Toàn bộ tag trong combo phải nằm trong tag của Operator
+                    return combo.All(tag => opTags.Contains(tag, StringComparer.OrdinalIgnoreCase));
+                }).ToList();
+
+                if (matched.Count > 0)
+                {
+                    int minRarity = matched.Min(o => RecruitmentCombinationResult.GetTier(o.Rarity));
+                    int maxRarity = matched.Max(o => RecruitmentCombinationResult.GetTier(o.Rarity));
+
+                    results.Add(new RecruitmentCombinationResult
+                    {
+                        Tags = combo,
+                        MatchedOperators = matched.OrderByDescending(o => RecruitmentCombinationResult.GetTier(o.Rarity)).ToList(),
+                        MinRarity = minRarity,
+                        MaxRarity = maxRarity
+                    });
+                }
+            }
+
+            // 3. Sắp xếp kết quả: Ưu tiên 6★ -> 5★ -> 4★ cam kết -> độ dài combo
+            return results
+                .OrderByDescending(r => r.Has6Star)
+                .ThenByDescending(r => r.IsGuaranteed4Plus)
+                .ThenByDescending(r => r.MinRarity)
+                .ThenByDescending(r => r.MaxRarity)
+                .ThenByDescending(r => r.Tags.Count)
+                .ToList();
+        }
+
+        private static List<List<string>> GenerateCombinations(List<string> list, int maxK)
+        {
+            var result = new List<List<string>>();
+            int n = list.Count;
+            int limit = Math.Min(n, maxK);
+
+            for (int k = 1; k <= limit; k++)
+            {
+                GenerateKCombinations(list, 0, k, new List<string>(), result);
+            }
+            return result;
+        }
+
+        private static void GenerateKCombinations(List<string> list, int start, int k, List<string> current, List<List<string>> result)
+        {
+            if (current.Count == k)
+            {
+                result.Add(new List<string>(current));
+                return;
+            }
+            for (int i = start; i < list.Count; i++)
+            {
+                current.Add(list[i]);
+                GenerateKCombinations(list, i + 1, k, current, result);
+                current.RemoveAt(current.Count - 1);
+            }
+        }
+
+        private static HashSet<string> GetOperatorAllTags(Character op)
+        {
+            var tags = new HashSet<string>(op.Tags, StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrEmpty(op.Position)) tags.Add(FormatPosition(op.Position));
+            if (!string.IsNullOrEmpty(op.Profession)) tags.Add(FormatProfession(op.Profession));
+
+            int tier = RecruitmentCombinationResult.GetTier(op.Rarity);
+            if (tier == 6) tags.Add("Top Operator");
+            if (tier == 5) tags.Add("Senior Operator");
+            if (tier == 2) tags.Add("Starter");
+            if (tier == 1) tags.Add("Robot");
+
+            return tags;
+        }
+
+        private static string FormatPosition(string p) => p.Equals("MELEE", StringComparison.OrdinalIgnoreCase) ? "Melee" : "Ranged";
+        private static string FormatProfession(string p) => p switch
+        {
+            "PIONEER" => "Vanguard",
+            "WARRIOR" => "Guard",
+            "TANK" => "Defender",
+            "SNIPER" => "Sniper",
+            "CASTER" => "Caster",
+            "MEDIC" => "Medic",
+            "SUPPORT" => "Supporter",
+            "SPECIAL" => "Specialist",
+            _ => p
+        };
+
+        private static List<Character> FilterRecruitmentPool(List<Character> allOps)
+        {
+            // Danh sách loại trừ các Operator không có trong tuyển dụng (Limited, Gacha Only, Welfare)
+            // Có thể mở rộng bằng file recruitment_table.json hoặc danh sách Id
+            return allOps.Where(o => !string.IsNullOrEmpty(o.Name)).ToList();
+        }
     }
 }
 ```
 
 ---
 
-## 5. 📋 Checklist Các Điểm Cần Sửa Ngay (Khắc Phục Chỗ Lệch)
+### 2.4. Thiết Kế Giao Diện `Recruitment.razor`
+Tạo file mới: `A9Tool/Components/Pages/Recruitment.razor`
+Gồm 2 phần chính:
+1. **Bảng Chọn Tag Dạng Ma Trận (Tag Matrix Grid):**
+   * Gom cụm theo nhóm: `Tư cách` (Top/Senior/Robot), `Vị trí` (Melee/Ranged), `Chức nghiệp` (8 lớp), `Đặc điểm` (14 tag).
+   * Giới hạn chọn tối đa **5 Tags** cùng lúc. Bấm lại để hủy chọn. Có nút "Clear All".
+2. **Khu Vực Hiển Thị Kết Quả Tổ Hợp (Real-time Results):**
+   * Thẻ tổ hợp hiển thị các tag đã ghép: `[Guard] + [Survival] ➡️ 4★+ Guaranteed!`.
+   * Danh sách Avatar chân dung mini của các Operator thỏa mãn kèm độ hiếm màu tương ứng (Vàng 6★, Tím 5★, Đỏ 4★).
 
-- [ ] **Trong `Core/Services/ImageService.cs`:**
-  - Sửa dòng 90: Đổi `Path.Combine(_baseCachePath, url)` thành `Path.Combine(_baseCachePath, category)`.
-  - Sửa dòng 99: Đổi `if (!File.Exists(filePath))` thành `if (File.Exists(filePath))`.
-  - Thêm phương thức `PrefetchImage(...)`, `GetCacheSizeBytesAsync()`, `ClearCacheAsync()`.
-- [ ] **Trong `A9Tool/MauiProgram.cs`:**
-  - Xóa bỏ dòng `builder.Services.AddSingleton<ImageService>();` bị lặp ở dòng 61 (chỉ giữ lại Factory ở dòng 52).
-- [ ] **Tạo file `A9Tool/Components/Common/LazyImage.razor`** và dùng `@inject ImageService ImageService`.
-- [ ] **Tích hợp vào `Operators.razor` và `OperatorDetail.razor`**.
-- [ ] **Bổ sung null-check trong `CharacterService.cs` và try-catch trong `GithubGameDataRepository .cs`**.
+---
+
+# 📖 PHẦN 3: LỘ TRÌNH KẾ TIẾP — BIO & ĐA PHƯƠNG TIỆN NHÂN VẬT (SAU HƯỚNG 1 & 2)
+
+> [!NOTE]
+> Phân hệ này sẽ được bắt đầu **ngay khi Hướng 1 và Hướng 2 hoàn tất**. Nút tab `Bio` đã có sẵn placeholder tại [OperatorDetail.razor:38](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor#L38).
+
+### 3.1. Các Module Trong Tab Bio
+1. **Trang phục (Skins & Art Viewer):**
+   * Nguồn: `skin_table.json` & CDN ArknightsAssets.
+   * Hiển thị danh sách skin của nhân vật (Default, E2, Skin thương hiệu), cho phép chuyển đổi ảnh nền OperatorDetail sang ảnh skin toàn màn hình.
+2. **Lồng tiếng & Thoại (Voice Lines & Audio Player):**
+   * Nguồn: `charword_table.json` & CDN âm thanh.
+   * Hỗ trợ đổi CV theo ngôn ngữ (JP/EN/CN/KR).
+   * Trình phát audio câu thoại (Chào hỏi, Chiến đấu, Kỹ năng, Xúc cảm...) kèm phụ đề transcript song ngữ.
+3. **Cốt truyện & Hồ sơ (Handbook & Stories):**
+   * Nguồn: `handbook_info_table.json`.
+   * Hiển thị Physical Exam, Clinical Analysis, 4 tệp hồ sơ lưu trữ mở khóa theo điểm tin cậy và Promotion Record.
+
+---
+
+## 📋 Tóm Tắt Trình Tự Thực Hiện
+
+| Bước | Phân Hệ | Nội Dung Chính | Trạng Thái |
+| :---: | :--- | :--- | :---: |
+| **1** | **🌟 Hướng 1: Hệ thống Vật phẩm** | Parse `item_table.json` ➡️ Tạo `ItemBadge.razor` ➡️ Mở khóa Materials Required cho Module/Elite/Mastery. | **LÀM ĐẦU TIÊN** |
+| **2** | **🎯 Hướng 2: Recruitment Calculator** | Thuật toán $C(n, k)$ ➡️ Xử lý luật 6★ Top Operator ➡️ Giao diện ma trận chọn Tag `/recruitment`. | **LÀM TIẾP THEO** |
+| **3** | **📖 Bio Hub & Đa phương tiện** | Skins Art Gallery ➡️ Voice Lines Audio Player ➡️ Handbook Archive Stories. | **LÀM SAU 1 & 2** |

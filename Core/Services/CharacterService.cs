@@ -213,6 +213,47 @@ namespace Core.Services
         }
 
         /// <summary>
+        /// Retrieves the list of detailed unlock missions for a specific operator module.
+        /// </summary>
+        /// <param name="module">The operator module entity.</param>
+        /// <returns>A list of <see cref="UniEquipMissionData"/> ordered by sort index.</returns>
+        public async Task<List<UniEquipMissionData>> GetMissionsForModuleAsync(UniEquipData? module)
+        {
+            var result = new List<UniEquipMissionData>();
+            if (module == null || module.MissionList == null || module.MissionList.Count == 0)
+            {
+                return result;
+            }
+
+            var missionTable = await _gameDataRepository.GetUniEquipMissionTableAsync();
+            if (missionTable == null || missionTable.Count == 0)
+            {
+                return result;
+            }
+
+            foreach (var missionId in module.MissionList)
+            {
+                if (string.IsNullOrEmpty(missionId)) continue;
+
+                if (missionTable.TryGetValue(missionId, out var missionData))
+                {
+                    result.Add(missionData);
+                }
+                else
+                {
+                    // Fallback using raw mission ID if details are not present
+                    result.Add(new UniEquipMissionData
+                    {
+                        UniEquipMissionId = missionId,
+                        Desc = missionId
+                    });
+                }
+            }
+
+            return result.OrderBy(m => m.UniEquipMissionSort).ToList();
+        }
+
+        /// <summary>
         /// Interpolates dynamic formula variables within description templates using values from the blackboard dataset.
         /// </summary>
         private string? ParseBlackboard(string? description, List<BlackboardDataPair>? blackboard)

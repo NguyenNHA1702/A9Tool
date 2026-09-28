@@ -923,7 +923,26 @@ else
                                 <div class="od-mod-bottom-box">
                                     <div class="od-mod-box-header">Module Missions</div>
                                     <div class="od-mod-box-content">
-                                        @if (CurrentModule.MissionList != null && CurrentModule.MissionList.Count > 0)
+                                        @if (currentModuleMissions != null && currentModuleMissions.Count > 0)
+                                        {
+                                            <div class="od-mod-missions-list">
+                                                @for (int i = 0; i < currentModuleMissions.Count; i++)
+                                                {
+                                                    var m = currentModuleMissions[i];
+                                                    <div class="od-mod-mission-card">
+                                                        <div class="od-mod-mission-header">
+                                                            <span class="od-mod-mission-idx">Mission @(i + 1)</span>
+                                                            @if (!string.IsNullOrEmpty(m.JumpStageId))
+                                                            {
+                                                                <span class="od-mod-stage-badge">Stage: @FormatStageId(m.JumpStageId)</span>
+                                                            }
+                                                        </div>
+                                                        <div class="od-mod-mission-desc">@m.GetFormattedDesc()</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else if (CurrentModule?.MissionList != null && CurrentModule.MissionList.Count > 0)
                                         {
                                             <ol class="od-mod-missions-ol">
                                                 @foreach (var mission in CurrentModule.MissionList)
@@ -1048,18 +1067,30 @@ else
     }
 
     private int selectedModuleStage = 0;
+    private List<UniEquipMissionData> currentModuleMissions = [];
     private Dictionary<string, RangeMatrix> moduleRangeCache = new();
 
     private async Task OnModuleSelected(int modIdx, int? targetStage = null)
     {
         selectedModuleIndex = modIdx;
         currentModuleBattleEquip = null;
+        currentModuleMissions = [];
         selectedModuleStage = targetStage ?? 0;
 
         // modIdx == 0 = ORIGINAL (no BattleEquip), modIdx >= 1 = custom modules
         if (modIdx > 0 && modules != null && modIdx <= modules.Count)
         {
             var mod = modules[modIdx - 1];
+
+            try
+            {
+                currentModuleMissions = await service.GetMissionsForModuleAsync(mod);
+            }
+            catch (Exception exMission)
+            {
+                Logger?.LogWarning(exMission, "[OnModuleSelected] Failed to load missions for '{ModId}'", mod.UniEquipId);
+            }
+
             if (!string.IsNullOrEmpty(mod.UniEquipId))
             {
                 try
@@ -1223,6 +1254,7 @@ else
             selectedSkill = 0;
             selectedModuleIndex = 0;
             currentModuleBattleEquip = null;
+            currentModuleMissions = [];
             activeDrawer = DrawerState.Collapsed;
 
             int savedModuleIdx = 0;
@@ -1718,6 +1750,12 @@ else
 
     private string CleanDescription(string? desc)
         => string.IsNullOrEmpty(desc) ? "" : System.Text.RegularExpressions.Regex.Replace(desc, @"<[^>]+>", "");
+
+    private string FormatStageId(string? stageId)
+    {
+        if (string.IsNullOrEmpty(stageId)) return "";
+        return stageId.Replace("main_", "").Replace("sub_", "");
+    }
 
     private string GetClassIconUrl(string? p) => p switch
     {

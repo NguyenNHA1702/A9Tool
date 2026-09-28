@@ -249,7 +249,9 @@ namespace Infrastructure.Github
         private static Dictionary<string, SkillDetail>? _cachedSkillTable;
         private static Dictionary<string, RangeData>? _cachedRangeTable;
         private static Dictionary<string, UniEquipData>? _cachedUniEquipData;
+        private static Dictionary<string, UniEquipMissionData>? _cachedUniEquipMissions;
         private static Dictionary<string, BattleEquipPack>? _cachedBattleEquipData;
+        private static readonly SemaphoreSlim _uniEquipLock = new(1, 1);
 
         private async Task<Dictionary<string, T>?> LoadTableAsync<T>(string localPath, string filePrefix, string schemaFileName)
         {
@@ -534,46 +536,147 @@ namespace Infrastructure.Github
             return null;
         }
 
-        public async Task<Dictionary<string, UniEquipData>?> GetUniEquipTableAsync()
+        private async Task EnsureUniEquipDataLoadedAsync(bool forceRefresh = false)
         {
-            if (_cachedUniEquipData != null)
+            if (!forceRefresh && _cachedUniEquipData != null && _cachedUniEquipMissions != null)
             {
-                return _cachedUniEquipData;
+                return;
             }
 
-            string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
-
+            await _uniEquipLock.WaitAsync();
             try
             {
-                var response = await LoadTableAsync<UniEquipData>(localpath, "uniequip_table", "uniequip_table.fbs");
-                _logger.LogInformation("[GetUniEquipTableAsync] Loaded {Count} UniEquip records. IDs: {Ids}", response?.Count ?? 0, string.Join(", ", response?.Keys?.Take(5) ?? []));
-                _cachedUniEquipData = response;
-                return response;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[GetUniEquipTableAsync] Failed to load uniequip_table. Checking local disk fallback...");
-                if (File.Exists(localpath))
+                if (!forceRefresh && _cachedUniEquipData != null && _cachedUniEquipMissions != null)
+                {
+                    return;
+                }
+
+                string equipPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
+                string missionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_mission_table.json");
+
+                var opts = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
+                };
+
+                // 1. Try reading both from disk cache if not forcing refresh and within 1 day
+                if (!forceRefresh && File.Exists(equipPath) && File.Exists(missionPath) && File.GetLastWriteTime(equipPath) > DateTime.Now.AddDays(-1))
                 {
                     try
                     {
-                        var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
-                        var opts = new JsonSerializerOptions
+                        var equipJson = await File.ReadAllTextAsync(equipPath, Encoding.UTF8);
+                        var missionJson = await File.ReadAllTextAsync(missionPath, Encoding.UTF8);
+
+                        _cachedUniEquipData = JsonSerializer.Deserialize<Dictionary<string, UniEquipData>>(equipJson, opts) ?? [];
+                        _cachedUniEquipMissions = JsonSerializer.Deserialize<Dictionary<string, UniEquipMissionData>>(missionJson, opts) ?? [];
+
+                        if (_cachedUniEquipData.Count > 0 && _cachedUniEquipMissions.Count > 0)
                         {
-                            PropertyNameCaseInsensitive = true,
-                            Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
-                        };
-                        var dict = ParseFlatBuffersJsonToDictionary<UniEquipData>(json, opts);
-                        _cachedUniEquipData = dict;
-                        return dict;
+                            _logger.LogInformation("[UniEquip] Loaded {EquipCount} equips and {MissionCount} missions from local disk cache.",
+                                _cachedUniEquipData.Count, _cachedUniEquipMissions.Count);
+                            return;
+                        }
                     }
-                    catch (Exception fallbackEx)
+                    catch (Exception ex)
                     {
-                        _logger.LogError(fallbackEx, "[GetUniEquipTableAsync] Failed to read local fallback cache.");
+                        _logger.LogWarning(ex, "[UniEquip] Failed to read disk cache. Will fetch fresh data.");
                     }
                 }
-                return new Dictionary<string, UniEquipData>();
+
+                // 2. Fetch fresh .bytes from GitHub and convert via FlatBuffers
+                try
+                {
+                    _logger.LogInformation("[UniEquip] Fetching fresh uniequip_table binary from GitHub...");
+                    string? downloadUrl = await FindLatestBytesDownloadUrlAsync("uniequip_table");
+                    if (string.IsNullOrEmpty(downloadUrl))
+                    {
+                        throw new InvalidOperationException("Could not find latest .bytes file URL for 'uniequip_table' on GitHub.");
+                    }
+
+                    byte[] bytesData = await _httpClient.GetByteArrayAsync(downloadUrl);
+                    string schemaPath = GetSchemaPath("uniequip_table.fbs");
+                    string? convertedJson = await _flatBuffersConverter.ConvertToJsonAsync(bytesData, schemaPath);
+
+                    if (!string.IsNullOrEmpty(convertedJson))
+                    {
+                        using var doc = JsonDocument.Parse(convertedJson);
+                        var root = doc.RootElement;
+
+                        var equipDict = new Dictionary<string, UniEquipData>();
+                        var missionDict = new Dictionary<string, UniEquipMissionData>();
+
+                        if (root.TryGetProperty("equipDict", out var equipProp) && equipProp.ValueKind == JsonValueKind.Array)
+                        {
+                            equipDict = ConvertKVArrayToDictionary<UniEquipData>(equipProp, opts);
+                        }
+                        else
+                        {
+                            equipDict = ParseFlatBuffersJsonToDictionary<UniEquipData>(convertedJson, opts);
+                        }
+
+                        if (root.TryGetProperty("missionList", out var missionProp) && missionProp.ValueKind == JsonValueKind.Array)
+                        {
+                            missionDict = ConvertKVArrayToDictionary<UniEquipMissionData>(missionProp, opts);
+                        }
+
+                        _cachedUniEquipData = equipDict;
+                        _cachedUniEquipMissions = missionDict;
+
+                        // Save both normalized files to local cache
+                        await File.WriteAllTextAsync(equipPath, JsonSerializer.Serialize(equipDict, opts), Encoding.UTF8);
+                        await File.WriteAllTextAsync(missionPath, JsonSerializer.Serialize(missionDict, opts), Encoding.UTF8);
+
+                        _logger.LogInformation("[UniEquip] Successfully loaded and cached {EquipCount} equips and {MissionCount} missions.",
+                            equipDict.Count, missionDict.Count);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[UniEquip] Error fetching/converting fresh uniequip_table from GitHub. Checking fallback...");
+                }
+
+                // 3. Fallback to existing disk files if available
+                if (File.Exists(equipPath))
+                {
+                    try
+                    {
+                        var equipJson = await File.ReadAllTextAsync(equipPath, Encoding.UTF8);
+                        _cachedUniEquipData ??= JsonSerializer.Deserialize<Dictionary<string, UniEquipData>>(equipJson, opts) ?? [];
+                    }
+                    catch { }
+                }
+
+                if (File.Exists(missionPath))
+                {
+                    try
+                    {
+                        var missionJson = await File.ReadAllTextAsync(missionPath, Encoding.UTF8);
+                        _cachedUniEquipMissions ??= JsonSerializer.Deserialize<Dictionary<string, UniEquipMissionData>>(missionJson, opts) ?? [];
+                    }
+                    catch { }
+                }
+
+                _cachedUniEquipData ??= [];
+                _cachedUniEquipMissions ??= [];
             }
+            finally
+            {
+                _uniEquipLock.Release();
+            }
+        }
+
+        public async Task<Dictionary<string, UniEquipData>?> GetUniEquipTableAsync()
+        {
+            await EnsureUniEquipDataLoadedAsync();
+            return _cachedUniEquipData;
+        }
+
+        public async Task<Dictionary<string, UniEquipMissionData>?> GetUniEquipMissionTableAsync()
+        {
+            await EnsureUniEquipDataLoadedAsync();
+            return _cachedUniEquipMissions;
         }
 
         public async Task<Dictionary<string, BattleEquipPack>?> GetBattleEquipTableAsync()
@@ -628,6 +731,7 @@ namespace Infrastructure.Github
             _cachedSkillTable = null;
             _cachedRangeTable = null;
             _cachedUniEquipData = null;
+            _cachedUniEquipMissions = null;
             _cachedBattleEquipData = null;
             _memoryDirectoryCache = null;
 
@@ -635,6 +739,7 @@ namespace Infrastructure.Github
             string localpath2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json");
             string localpath3 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skill_table.json");
             string localpath4 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
+            string localpath4Missions = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_mission_table.json");
             string localpath5 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "battle_equip_table.json");
             // NOTE: range_table.json contains static game definitions (72 entries, invariant across game updates).
             // Newer .bytes files cannot be decoded via flatc, so the static local cache must NOT be deleted.
@@ -660,6 +765,11 @@ namespace Infrastructure.Github
             {
                 File.Delete(localpath4);
                 _logger.LogInformation("[ResetCache] Deleted local cache: uniequip_table.json");
+            }
+            if (File.Exists(localpath4Missions))
+            {
+                File.Delete(localpath4Missions);
+                _logger.LogInformation("[ResetCache] Deleted local cache: uniequip_mission_table.json");
             }
             if (File.Exists(localpath5))
             {

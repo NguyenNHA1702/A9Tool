@@ -58,6 +58,12 @@ namespace Core.Interfaces
         Task<Dictionary<string, BattleEquipPack>?> GetBattleEquipTableAsync();
 
         /// <summary>
+        /// Retrieves operator module unlock missions dictionary.
+        /// </summary>
+        /// <returns>A dictionary mapping mission IDs to <see cref="UniEquipMissionData"/> objects, or null if unavailable.</returns>
+        Task<Dictionary<string, UniEquipMissionData>?> GetUniEquipMissionTableAsync();
+
+        /// <summary>
         /// Clears local and in-memory caches, synchronizing fresh game data from the remote source.
         /// </summary>
         Task ResetCache();

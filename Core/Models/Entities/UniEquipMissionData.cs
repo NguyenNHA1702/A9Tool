@@ -1,4 +1,4 @@
-﻿using Core.Enums;
+using Core.Enums;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -16,6 +16,28 @@ namespace Core.Models.Entities
 
         public string? UniEquipId { get; set; }
         public string? JumpStageId { get; set; }
+
+        /// <summary>
+        /// Returns the formatted mission description with template parameters substituted and formatting tags stripped.
+        /// </summary>
+        public string GetFormattedDesc()
+        {
+            var text = !string.IsNullOrWhiteSpace(Desc) ? Desc : Template;
+            if (string.IsNullOrWhiteSpace(text)) return "";
+
+            // Replace {0}, {1}... placeholders with ParamList values if available
+            if (ParamList != null && ParamList.Count > 0)
+            {
+                for (int i = 0; i < ParamList.Count; i++)
+                {
+                    text = text.Replace($"{{{i}}}", ParamList[i]);
+                }
+            }
+
+            // Strip game rich-text markup tags: <@ba.kw>...</>, <color=...>...</>
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"<[^>]+>", "");
+            return text.Trim();
+        }
     }
 
     public class SubProfessionData

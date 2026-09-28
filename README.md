@@ -73,6 +73,7 @@ A9Tools/
 | [x] | A9-201 | **Nạp dữ liệu Module từ GitHub:** Tải và parse dữ liệu module từ `uniequip_table.json` và `battle_equip_table.json`. | 2h | ⚡ Cao | `Done` |
 | [x] | A9-202 | **Giao diện chi tiết Module:** Hiển thị icon module, tên module, điều kiện mở khóa. | 2h | ⚡ Cao | `Done` |
 | [x] | A9-203 | **Tương tác cấp độ Module (Stage 1/2/3):** Cho phép click chọn Stage 1/2/3 để xem các chỉ số cộng thêm động và sự thay đổi Trait/Talent. | 2h | ⚡ Cao | `Done` |
+| [x] | A9-204 | **Nhiệm vụ mở khóa Module (Module Missions):** Trích xuất `missionList` từ `uniequip_table`, format mô tả nhiệm vụ và hiển thị thẻ nhiệm vụ trực quan kèm Stage badge. | 2h | ⚡ Cao | `Done` |
 
 #### 📋 Epic 3: Bộ tính Tag Tuyển chọn - Recruitment Calculator (Thời gian ước lượng: ~5h)
 
@@ -89,6 +90,17 @@ A9Tools/
 | [ ] | A9-401 | **Cấu trúc hóa nguyên liệu nâng cấp:** Parse thông tin chi tiết nguyên liệu nâng cấp (độ hiếm, tên, icon) từ `item_table.json`. | 3h | 🛠️ Trung bình | `ToDo` |
 | [ ] | A9-402 | **Thuật toán tính nguyên liệu chênh lệch:** Nhận đầu vào là trạng thái hiện tại và đích đến. Trả ra danh sách nguyên liệu và LMD cần chuẩn bị. | 4h | 🛠️ Trung bình | `ToDo` |
 | [ ] | A9-403 | **Giao diện lập kế hoạch Planner:** Hiển thị lưới icon vật phẩm kèm số lượng cần dùng. | 3h | 🛠️ Trung bình | `ToDo` |
+
+#### 📋 Epic 4.5: Hồ sơ Nhân vật & Đa phương tiện - Character Biography & Media Hub (Thời gian ước lượng: ~10h)
+
+> [!NOTE]
+> **Thứ tự ưu tiên triển khai:** Nút chuyển tab `Bio` đã có sẵn placeholder tại [OperatorDetail.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor#L38). Theo kế hoạch, phân hệ này sẽ được **triển khai ngay sau khi hoàn thành xong 2 hướng đề xuất trước đó** (Hướng 1: Hệ thống Vật phẩm/Nguyên liệu A9-401 và Hướng 2: Recruitment Calculator Epic 3).
+
+| Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
+| :---: | :---: | :--- | :---: | :---: | :---: |
+| [ ] | A9-451 | **Trang phục & Trình xem Ảnh (Skins & Art Gallery):** Parse dữ liệu từ `skin_table.json`, hiển thị danh sách trang phục theo thương hiệu (Coral Coast, EPOQUE...), xem tranh minh họa đầy đủ (Splash Art, Chibi, Live2D). | 3.5h | 🎨 Thẩm mỹ | `Backlog (Sau Hướng 1 & 2)` |
+| [ ] | A9-452 | **Lồng tiếng & Lời thoại (Voice Lines & Audio Player):** Nạp `charword_table.json`, hỗ trợ đa ngôn ngữ lồng tiếng (CV JP/EN/CN/KR), tích hợp trình phát audio thoại trực tuyến và hiển thị transcript lời thoại. | 3.5h | 🎧 Âm thanh | `Backlog (Sau Hướng 1 & 2)` |
+| [ ] | A9-453 | **Hồ sơ Cá nhân & Cốt truyện (Handbook & Archive Stories):** Nạp `handbook_info_table.json`, hiển thị chi tiết kiểm tra thể chất (Physical Exam), bệnh án Oripathy (Clinical Analysis), 4 tệp hồ sơ lưu trữ và ghi chép thăng cấp (Promotion Record). | 3h | 📖 Cốt truyện | `Backlog (Sau Hướng 1 & 2)` |
 
 ---
 
