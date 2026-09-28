@@ -1,0 +1,121 @@
+@using Core.Services
+@inject ImageService ImageService
+@implements IDisposable
+
+@if (string.IsNullOrEmpty(_currentSrc))
+{
+    <!-- Show a gray placeholder skeleton while resolving image -->
+    <div class="lazy-image-placeholder @Class" style="@Style"></div>
+}
+else
+{
+    <img src="@_currentSrc"
+         class="@Class"
+         style="@Style"
+         alt="@Alt"
+         loading="lazy"
+         onerror="@($"this.onerror=null;this.src='{FallbackSrc ?? "/assets/icons/characterdetail/back_round.png"}';")"
+         @attributes="AdditionalAttributes" />
+}
+
+@code {
+    /// <summary>Primary image source URL (remote CDN URL).</summary>
+    [Parameter] public string? Src { get; set; }
+
+    /// <summary>Fallback URL used automatically if the primary URL fails.</summary>
+    [Parameter] public string? FallbackSrc { get; set; }
+
+    /// <summary>
+    /// Disk cache sub-folder category (e.g. "avatars", "skills", "modules", "characters").
+    /// ImageService uses this to organize cached files under FileSystem.CacheDirectory/A9ToolImages/{Category}/.
+    /// </summary>
+    [Parameter] public string Category { get; set; } = "general";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Alt { get; set; }
+
+    /// <summary>Captures any additional HTML attributes and forwards them to the underlying img tag.</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // Resolved Base64 Data URI or initial web URL for immediate browser rendering
+    private string? _currentSrc;
+
+    // Tracks the Src value from the previous render to avoid redundant ImageService calls on re-renders
+    private string? _lastRequestedSrc;
+
+    // Cancellation token source to cancel pending background downloads when unmounted or Src changes
+    private CancellationTokenSource? _cts;
+
+    protected override void OnParametersSet()
+    {
+        // Skip if Src hasn't changed and the image is already loaded — prevents unnecessary re-fetches
+        if (Src == _lastRequestedSrc && !string.IsNullOrEmpty(_currentSrc))
+        {
+            return;
+        }
+
+        _lastRequestedSrc = Src;
+
+        // Cancel any pending download for a previous Src
+        try
+        {
+            _cts?.Cancel();
+        }
+        catch { }
+        _cts = new CancellationTokenSource();
+
+        // If Src is empty, fall back to FallbackSrc or leave blank (shows placeholder)
+        if (string.IsNullOrWhiteSpace(Src))
+        {
+            _currentSrc = FallbackSrc;
+            return;
+        }
+
+        // Fast path: Check if image is already cached in RAM or on Disk
+        if (ImageService.TryGetCachedImage(Src, Category, out var cachedDataUri))
+        {
+            _currentSrc = cachedDataUri;
+            return;
+        }
+
+        // Cache miss: Render the remote URL immediately with browser native loading="lazy"
+        // so viewport images display instantly without waiting for C# background downloads
+        _currentSrc = Src;
+
+        var token = _cts.Token;
+        var requestedSrc = Src;
+
+        // Decouple disk caching onto a separate background thread so UI rendering never blocks
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var resolvedUri = await ImageService.GetImageAsync(requestedSrc, FallbackSrc, Category, token);
+                if (!token.IsCancellationRequested && !string.IsNullOrEmpty(resolvedUri) && resolvedUri != _currentSrc)
+                {
+                    _currentSrc = resolvedUri;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Component was unmounted or Src changed before download finished
+            }
+            catch (Exception)
+            {
+                // Suppress background errors; fallback image or browser URL handles display
+            }
+        }, token);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _cts?.Cancel();
+        }
+        catch { }
+    }
+}

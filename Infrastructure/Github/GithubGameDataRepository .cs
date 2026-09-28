@@ -421,6 +421,8 @@ namespace Infrastructure.Github
         {
             if (_cachedCharacterDetails != null && _cachedCharacterDetails.TryGetValue(id, out var cachedDetail))
             {
+                if (string.IsNullOrEmpty(cachedDetail.Id)) cachedDetail.Id = id;
+                if (string.IsNullOrEmpty(cachedDetail.Rarity)) cachedDetail.Rarity = "TIER_1";
                 return cachedDetail;
             }
 
@@ -434,11 +436,15 @@ namespace Infrastructure.Github
                 return null;
             }
 
+            foreach (var (key, detail) in response)
+            {
+                detail.Id = key;
+                if (string.IsNullOrEmpty(detail.Rarity)) detail.Rarity = "TIER_1";
+            }
+
             _cachedCharacterDetails = response;
 
             var raw = response[id];
-            raw.Id = id;
-            if (string.IsNullOrEmpty(raw.Rarity)) raw.Rarity = "TIER_1";
             _logger.LogInformation("[GetCharacterDetailAsync] Loaded operator detail for {Name} ({Id})", raw.Name, id);
             return raw;
         }
@@ -537,10 +543,37 @@ namespace Infrastructure.Github
 
             string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
 
-            var response = await LoadTableAsync<UniEquipData>(localpath, "uniequip_table", "uniequip_table.fbs");
-            _logger.LogInformation("[GetUniEquipTableAsync] Loaded {Count} UniEquip records. IDs: {Ids}", response?.Count, string.Join(", ", response?.Keys?.Take(5)));
-            _cachedUniEquipData = response;
-            return response;
+            try
+            {
+                var response = await LoadTableAsync<UniEquipData>(localpath, "uniequip_table", "uniequip_table.fbs");
+                _logger.LogInformation("[GetUniEquipTableAsync] Loaded {Count} UniEquip records. IDs: {Ids}", response?.Count ?? 0, string.Join(", ", response?.Keys?.Take(5) ?? []));
+                _cachedUniEquipData = response;
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[GetUniEquipTableAsync] Failed to load uniequip_table. Checking local disk fallback...");
+                if (File.Exists(localpath))
+                {
+                    try
+                    {
+                        var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
+                        var opts = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true,
+                            Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
+                        };
+                        var dict = ParseFlatBuffersJsonToDictionary<UniEquipData>(json, opts);
+                        _cachedUniEquipData = dict;
+                        return dict;
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _logger.LogError(fallbackEx, "[GetUniEquipTableAsync] Failed to read local fallback cache.");
+                    }
+                }
+                return new Dictionary<string, UniEquipData>();
+            }
         }
 
         public async Task<Dictionary<string, BattleEquipPack>?> GetBattleEquipTableAsync()
@@ -552,13 +585,40 @@ namespace Infrastructure.Github
 
             string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "battle_equip_table.json");
 
-            var response = await LoadTableAsync<BattleEquipPack>(localpath, "battle_equip_table", "battle_equip_table.fbs");
+            try
+            {
+                var response = await LoadTableAsync<BattleEquipPack>(localpath, "battle_equip_table", "battle_equip_table.fbs");
 
-            _logger.LogInformation(
-                "[GetBattleEquipTableAsync] Loaded {Count} BattleEquip records. IDs: {Ids}", response?.Count, string.Join(", ", response?.Keys?.Take(5) ?? []));
+                _logger.LogInformation(
+                    "[GetBattleEquipTableAsync] Loaded {Count} BattleEquip records. IDs: {Ids}", response?.Count ?? 0, string.Join(", ", response?.Keys?.Take(5) ?? []));
 
-            _cachedBattleEquipData = response;
-            return response;
+                _cachedBattleEquipData = response;
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[GetBattleEquipTableAsync] Failed to load battle_equip_table. Checking local disk fallback...");
+                if (File.Exists(localpath))
+                {
+                    try
+                    {
+                        var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
+                        var opts = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true,
+                            Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
+                        };
+                        var dict = ParseFlatBuffersJsonToDictionary<BattleEquipPack>(json, opts);
+                        _cachedBattleEquipData = dict;
+                        return dict;
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _logger.LogError(fallbackEx, "[GetBattleEquipTableAsync] Failed to read local fallback cache.");
+                    }
+                }
+                return new Dictionary<string, BattleEquipPack>();
+            }
         }
 
         public async Task ResetCache()

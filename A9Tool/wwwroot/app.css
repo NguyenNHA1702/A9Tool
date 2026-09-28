@@ -526,6 +526,7 @@ body {
     overflow: hidden;
     background: #08080c;
     font-family: var(--font-sans, 'Inter', sans-serif);
+    z-index: 1000;
 }
 
 .od-bg-layer {
@@ -2195,6 +2196,10 @@ body {
 
 /* Loading Spinner & Responsive Layout */
 .od-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: #08080c;
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -1,10 +1,16 @@
 @page "/operators"
+@page "/operators/{Id}"
 @using Core.Helpers
 @inject Core.Services.CharacterService service
 @inject NavigationManager Nav
 @inject ILogger<Operators> Logger
 
-<div class="max-w-[1400px] mx-auto p-6">
+@if (!string.IsNullOrEmpty(Id))
+{
+    <OperatorDetail Id="@Id" OnBack="HandleBack" />
+}
+
+<div class="max-w-[1400px] mx-auto p-6" style="@(!string.IsNullOrEmpty(Id) ? "display: none;" : "")">
 
     @if (list is null)
     {
@@ -56,12 +62,11 @@
                 var id = op.Id?.ToLower() ?? "";
                 <div class="op-card" data-rarity="@op.Rarity" @key="op.Id" @onclick="() => NavigateToDetail(op.Id)">
                     <!-- Main Character Portrait -->
-                    <img class="op-card-img"
-                         @key="@($"img-{op.Id}")"
-                         src="https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/@(id)_1.png"
-                         onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'"
-                         alt="@op.Name"
-                         loading="lazy" />
+                    <A9Tool.Components.Common.LazyImage Class="op-card-img"
+                                                        Src="@($"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{id}_1.png")"
+                                                        FallbackSrc="@($"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{id}.png")"
+                                                        Category="avatars"
+                                                        Alt="@op.Name" />
 
                     <!-- Top Overlay Badge: Class Icon & Rarity Stars -->
                     <div class="op-card-top-badge rarity-badge-@(op.Rarity)">
@@ -105,10 +110,17 @@
         .Where(c => string.IsNullOrEmpty(selectProfession) || c.Profession == selectProfession)
         ?? Enumerable.Empty<Character>();
 
+    [Parameter] public string? Id { get; set; }
+
     private void NavigateToDetail(string? id)
     {
         if (id is not null)
             Nav.NavigateTo($"/operators/{id}");
+    }
+
+    private void HandleBack()
+    {
+        Nav.NavigateTo("/operators");
     }
 
     private string FormatRarity(string? r)

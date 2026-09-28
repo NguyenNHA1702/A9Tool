@@ -1,9 +1,9 @@
-@page "/operators/{Id}"
 @using Core.Github.DTOs.Response
 @using Core.DTOs.Response
 @using Core.Helpers
 @using Core.Models.Entities
 @inject Core.Services.CharacterService service
+@inject Core.Services.ImageService ImageService
 @inject NavigationManager Nav
 @using Microsoft.Extensions.Logging;
 
@@ -21,22 +21,21 @@ else
 
         <div class="od-bg-layer" style="background-image: url('@currentBgUrl')"></div>
 
-        <!-- --- Hidden asset preloader to verify availability before background display --- -->
+        <!-- --- Hidden asset fallback detector to handle missing promotion art --- -->
         <img src="@GetImageUrl(Id, displayElite)"
              style="display:none"
              @key="elite"
-             @onerror="OnImageError"
-             @onload="() => currentBgUrl = GetImageUrl(Id, displayElite)" />
+             @onerror="OnImageError" />
 
         <div class="od-vignette"></div>
 
         <nav class="od-topnav">
-            <button class="od-back-btn" onclick="history.back()">← Back</button>
+            <button class="od-back-btn" @onclick="HandleBack">← Back</button>
 
             <!-- --- Top Navigation Tabs (Extensible: Talents, Modules, Story) --- -->
             <div class="od-tabs">
                 <button class="od-tab active">Info</button>
-                <button class="od-tab">Skills</button>
+                <button class="od-tab">Bio</button>
             </div>
         </nav>
 
@@ -369,7 +368,11 @@ else
                                         var firstLvl = sk.Levels?.FirstOrDefault();
                                         <div class="od-skill-tab-item @(selectedSkill == sIdx ? "active" : "")"
                                              @onclick="() => SelectSkill(sIdx)">
-                                            <img class="od-skill-tab-img" src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
+                                            <A9Tool.Components.Common.LazyImage
+                                                Class="od-skill-tab-img"
+                                                Src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)"
+                                                Category="skills"
+                                                Alt="@($"Skill {sIdx + 1}")" />
                                             @if (selectedSkill == sIdx)
                                             {
                                                 <span class="od-skill-check">✓</span>
@@ -484,7 +487,10 @@ else
                                             var sk = skills[sIdx];
                                             var firstLvl = sk.Levels?.FirstOrDefault();
                                             <div class="od-skill-summary-item @(selectedSkill == sIdx ? "active" : "")">
-                                                <img src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" alt="Skill @(sIdx + 1)" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
+                                                <A9Tool.Components.Common.LazyImage
+                                                    Src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)"
+                                                    Category="skills"
+                                                    Alt="@($"Skill {sIdx + 1}")" />
                                                 @if (selectedSkill == sIdx)
                                                 {
                                                     <span class="od-skill-check">✓</span>
@@ -550,8 +556,12 @@ else
                                             <div class="od-mod-slot-box @(selectedModuleIndex == mIdx ? "active" : "")"
                                                  @onclick="() => OnModuleSelected(mIdx)"
                                                  title="@mod.TypeName1">
-                                                <!-- Customization hook: Module icon path (e.g., /assets/icons/modules/...) -->
-                                                <img class="od-mod-slot-img" src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
+                                                <!-- Module type icon cached via ImageService -->
+                                                <A9Tool.Components.Common.LazyImage
+                                                    Class="od-mod-slot-img"
+                                                    Src="@GetModuleTypeIconUrl(mod)"
+                                                    Category="modules"
+                                                    Alt="@mod.UniEquipName" />
                                                 @if (selectedModuleIndex == mIdx)
                                                 {
                                                     <span class="od-mod-check">✓</span>
@@ -591,7 +601,7 @@ else
                                 <div class="od-mod-materials-section">
                                     <span class="od-mod-mat-label">Upgrade Materials:</span>
                                     <div class="od-mod-mat-list">
-                                         Render material items list here...
+                                         Render material items list here... 
                                     </div>
                                 </div>
                                 -->
@@ -657,7 +667,10 @@ else
                                             var mIdx = m + 1;
                                             var mod = modules[m];
                                             <div class="od-mod-mini-box @(selectedModuleIndex == mIdx ? "active" : "")">
-                                                <img src="@GetModuleTypeIconUrl(mod)" alt="@mod.UniEquipName" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
+                                                <A9Tool.Components.Common.LazyImage
+                                                    Src="@GetModuleTypeIconUrl(mod)"
+                                                    Category="modules"
+                                                    Alt="@mod.UniEquipName" />
                                             </div>
                                         }
                                     }
@@ -962,6 +975,19 @@ else
     [Inject] ILogger<OperatorDetail>? Logger { get; set; }
 
     [Parameter] public string Id { get; set; } = "";
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private async Task HandleBack()
+    {
+        if (OnBack.HasDelegate)
+        {
+            await OnBack.InvokeAsync();
+        }
+        else
+        {
+            Nav.NavigateTo("/operators");
+        }
+    }
 
     private CharacterDetail? op;
 
@@ -975,13 +1001,14 @@ else
 
     private bool showLevelModal = false;
     private bool showModuleStatModal = false;
-    private static readonly Dictionary<string, (int Elite, int Level, int Trust)> _savedOperatorState = new();
+    private record struct SavedOperatorState(int Elite, int Level, int Trust, int ModuleIndex, int ModuleStage, DrawerState Drawer);
+    private static readonly Dictionary<string, SavedOperatorState> _savedOperatorState = new();
 
     private void SaveState()
     {
         if (!string.IsNullOrEmpty(Id))
         {
-            _savedOperatorState[Id] = (elite, currentLevel, selectedTrust);
+            _savedOperatorState[Id] = new SavedOperatorState(elite, currentLevel, selectedTrust, selectedModuleIndex, selectedModuleStage, activeDrawer);
         }
     }
 
@@ -1011,21 +1038,23 @@ else
     private void ToggleSkillDrawer()
     {
         activeDrawer = activeDrawer == DrawerState.SkillExpanded ? DrawerState.Collapsed : DrawerState.SkillExpanded;
+        SaveState();
     }
 
     private void ToggleModuleDrawer()
     {
         activeDrawer = activeDrawer == DrawerState.ModuleExpanded ? DrawerState.Collapsed : DrawerState.ModuleExpanded;
+        SaveState();
     }
 
     private int selectedModuleStage = 0;
     private Dictionary<string, RangeMatrix> moduleRangeCache = new();
 
-    private async Task OnModuleSelected(int modIdx)
+    private async Task OnModuleSelected(int modIdx, int? targetStage = null)
     {
         selectedModuleIndex = modIdx;
         currentModuleBattleEquip = null;
-        selectedModuleStage = 0;
+        selectedModuleStage = targetStage ?? 0;
 
         // modIdx == 0 = ORIGINAL (no BattleEquip), modIdx >= 1 = custom modules
         if (modIdx > 0 && modules != null && modIdx <= modules.Count)
@@ -1041,7 +1070,14 @@ else
 
                     if (currentModuleBattleEquip?.Phases?.Count > 0)
                     {
-                        selectedModuleStage = currentModuleBattleEquip.Phases.Count - 1;
+                        if (targetStage.HasValue)
+                        {
+                            selectedModuleStage = Math.Clamp(targetStage.Value, 0, currentModuleBattleEquip.Phases.Count - 1);
+                        }
+                        else
+                        {
+                            selectedModuleStage = currentModuleBattleEquip.Phases.Count - 1;
+                        }
                     }
                     await LoadModuleRangesAsync();
                 }
@@ -1051,6 +1087,7 @@ else
                 }
             }
         }
+        SaveState();
     }
 
     private double GetModuleBonus(string statKey)
@@ -1185,7 +1222,11 @@ else
 
             selectedSkill = 0;
             selectedModuleIndex = 0;
+            currentModuleBattleEquip = null;
             activeDrawer = DrawerState.Collapsed;
+
+            int savedModuleIdx = 0;
+            int savedModuleStage = 0;
 
             // Load saved Level/Elite state if previously set
             if (!string.IsNullOrEmpty(Id) && _savedOperatorState.TryGetValue(Id, out var savedState))
@@ -1194,17 +1235,22 @@ else
                 displayElite = savedState.Elite;
                 selectedTrust = savedState.Trust;
                 currentLevel = savedState.Level;
+                savedModuleIdx = savedState.ModuleIndex;
+                savedModuleStage = savedState.ModuleStage;
+                activeDrawer = savedState.Drawer;
             }
             else
             {
                 elite = 0;
                 displayElite = 0;
-                currentBgUrl = GetImageUrl(Id, displayElite);
                 if (op?.Phases != null && op.Phases.Count > 0)
                 {
                     currentLevel = op.Phases[elite].MaxLevel;
                 }
             }
+
+            // Immediately dispatch background art loading in a separate thread (0ms blocking on data pipeline)
+            LoadBackgroundArt();
 
             if (op != null)
             {
@@ -1236,7 +1282,8 @@ else
                 stepSw.Restart();
                 try
                 {
-                    modules = await service.GetModulesByOperatorAsync(op.Id);
+                    var opId = !string.IsNullOrEmpty(op.Id) ? op.Id : Id;
+                    modules = await service.GetModulesByOperatorAsync(opId);
                     stepSw.Stop();
                     Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(65, PipelineLogger.TagDiskHit("uniequip_table.json"), "Modules (UniEquip)", $"{modules?.Count ?? 0} modules mapped", stepSw.ElapsedMilliseconds));
 
@@ -1247,6 +1294,12 @@ else
                             var m = modules[i];
                             Logger?.LogInformation("{SubItem}", PipelineLogger.FormatSubItem($"Mod {i + 1}", $"{m.UniEquipName} ({m.TypeName1})", i == modules.Count - 1));
                         }
+
+                        // Restore saved module selection if valid
+                        if (savedModuleIdx > 0 && savedModuleIdx <= modules.Count)
+                        {
+                            await OnModuleSelected(savedModuleIdx, savedModuleStage);
+                        }
                     }
                 }
                 catch (Exception exMod)
@@ -1254,6 +1307,31 @@ else
                     errCount++;
                     Logger?.LogError(exMod, "Error fetching modules for operator: {OperatorName}", op.Name);
                 }
+
+                // --- A9-502: Prefetch skill & module icons in a separate background thread (non-blocking) ---
+                var skillsToPrefetch = skills;
+                var modulesToPrefetch = modules;
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        if (skillsToPrefetch != null)
+                        {
+                            foreach (var s in skillsToPrefetch)
+                            {
+                                ImageService.PrefetchImage(GetSkillImageUrl(s.IconId ?? s.SkillId), category: "skills");
+                            }
+                        }
+                        if (modulesToPrefetch != null)
+                        {
+                            foreach (var m in modulesToPrefetch)
+                            {
+                                ImageService.PrefetchImage(GetModuleTypeIconUrl(m), category: "modules");
+                            }
+                        }
+                    }
+                    catch { }
+                });
             }
 
             // --- Step 4: Attack Ranges (80%) ---
@@ -1278,11 +1356,8 @@ else
             stepSw.Stop();
             Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(90, PipelineLogger.TagComputed(), "Battle Stats", $"E{elite} LV{currentLevel} Trust{selectedTrust}% -> HP: {stats.MaxHp} | ATK: {stats.Atk} | DEF: {stats.Def}", stepSw.ElapsedMilliseconds));
 
-            // --- Step 6: Visual Assets (100%) ---
-            stepSw.Restart();
-            currentBgUrl = GetImageUrl(Id, displayElite);
-            stepSw.Stop();
-            Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(100, PipelineLogger.TagDiskHit("Art Cache"), "Visual Assets", $"Background E{displayElite} resolved | Render ready", stepSw.ElapsedMilliseconds));
+            // --- Step 6: Visual Assets (100%) — art background loaded in background thread ---
+            Logger?.LogInformation("{Step}", PipelineLogger.FormatStep(100, PipelineLogger.TagDiskHit("Art Cache"), "Visual Assets", $"Background E{displayElite} dispatched asynchronously | UI ready", stepSw.ElapsedMilliseconds));
 
             // --- Pipeline Complete ---
             totalSw.Stop();
@@ -1321,11 +1396,55 @@ else
         _ => "/assets/icons/characterdetail/back_round.png"
     };
 
+    /// <summary>
+    /// Loads character background art decoupled on a background thread so UI and data load instantly.
+    /// Fast-path uses synchronous memory/disk cache (0ms). On cache miss, renders remote URL directly
+    /// and streams caching into ImageService asynchronously.
+    /// </summary>
+    private void LoadBackgroundArt()
+    {
+        if (string.IsNullOrEmpty(Id)) return;
+
+        var targetUrl = GetImageUrl(Id, displayElite);
+
+        // Fast path: Synchronous L1/L2 cache check (0ms)
+        if (ImageService.TryGetCachedImage(targetUrl, "characters", out var cachedDataUri))
+        {
+            currentBgUrl = cachedDataUri;
+            return;
+        }
+
+        // Fast render: Assign remote URL directly for WebView2 native rendering without blocking C# thread
+        currentBgUrl = targetUrl;
+
+        // Decoupled background task: Download and cache to disk for offline use
+        var requestedElite = displayElite;
+        var requestedId = Id;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var resolvedUri = await ImageService.GetImageAsync(targetUrl, null, "characters");
+                // Only update if user hasn't switched operator or elite in the meantime
+                if (!string.IsNullOrEmpty(resolvedUri) && displayElite == requestedElite && Id == requestedId)
+                {
+                    currentBgUrl = resolvedUri;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "Background download failed for character art: {Url}", targetUrl);
+            }
+        });
+    }
+
     private void OnImageError()
     {
         if (displayElite > 0)
         {
             displayElite--;
+            LoadBackgroundArt();
         }
         else
         {
@@ -1338,6 +1457,7 @@ else
         elite = newElite;
         displayElite = newElite;
         SaveState();
+        LoadBackgroundArt();
         var maxLv = op?.Phases != null && op.Phases.Count > newElite ? op.Phases[newElite].MaxLevel : 0;
         var phaseRangeId = op?.Phases != null && op.Phases.Count > newElite ? op.Phases[newElite].RangeId : "N/A";
         Logger?.LogInformation(
