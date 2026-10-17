@@ -1,4 +1,4 @@
-﻿using Core.Models;
+using Core.Models;
 using Core.Models.Entities;
 using System.Text.Json.Serialization;
 
@@ -30,4 +30,8 @@ public class CharacterDetail : Character
     [JsonPropertyName("skills")]
     [JsonConverter(typeof(FlexibleListConverter<Skill>))]
     public List<Skill> Skills { get; set; } = new();
+
+    [JsonPropertyName("allSkillLvlup")]
+    [JsonConverter(typeof(FlexibleListConverter<SkillLevelCost>))]
+    public List<SkillLevelCost>? AllSkillLvlup { get; set; } = new();
 }

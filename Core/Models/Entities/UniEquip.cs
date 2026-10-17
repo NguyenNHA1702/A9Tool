@@ -40,8 +40,8 @@ public class UniEquipData
 
     public List<string> MissionList { get; set; } = [];
 
-    [JsonIgnore]
-    public List<Dictionary<int, List<ItemBundle>>> ItemCost { get; set; } = [];
+    [JsonPropertyName("itemCost")]
+    public List<StageCostEntry>? ItemCost { get; set; } = [];
 
     public UniEquipType Type { get; set; }
 
@@ -59,4 +59,13 @@ public class UniEquipData
 
     [JsonIgnore]
     public List<Dictionary<string, int>> UnlockFavors { get; set; } = [];
+}
+
+public class StageCostEntry
+{
+    [JsonPropertyName("key")]
+    public int Stage { get; set; }
+
+    [JsonPropertyName("value")]
+    public List<ItemBundle> Items { get; set; } = [];
 }

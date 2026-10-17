@@ -64,6 +64,12 @@ namespace Core.Interfaces
         Task<Dictionary<string, UniEquipMissionData>?> GetUniEquipMissionTableAsync();
 
         /// <summary>
+        /// Retrieves the item and material definition table.
+        /// </summary>
+        /// <returns>A dictionary mapping item IDs to <see cref="ItemData"/> objects, or null if unavailable.</returns>
+        Task<Dictionary<string, ItemData>?> GetItemTableAsync();
+
+        /// <summary>
         /// Clears local and in-memory caches, synchronizing fresh game data from the remote source.
         /// </summary>
         Task ResetCache();

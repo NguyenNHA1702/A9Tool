@@ -251,7 +251,9 @@ namespace Infrastructure.Github
         private static Dictionary<string, UniEquipData>? _cachedUniEquipData;
         private static Dictionary<string, UniEquipMissionData>? _cachedUniEquipMissions;
         private static Dictionary<string, BattleEquipPack>? _cachedBattleEquipData;
+        private static Dictionary<string, ItemData>? _cachedItemTable;
         private static readonly SemaphoreSlim _uniEquipLock = new(1, 1);
+        private static readonly SemaphoreSlim _itemTableLock = new(1, 1);
 
         private async Task<Dictionary<string, T>?> LoadTableAsync<T>(string localPath, string filePrefix, string schemaFileName)
         {
@@ -411,7 +413,8 @@ namespace Infrastructure.Github
                     Profession = x.Value.Profession,
                     NationId = x.Value.NationId,
                     Position = x.Value.Position,
-                    Tags = x.Value.Tags
+                    Tags = x.Value.Tags,
+                    ItemObtainApproach = x.Value.ItemObtainApproach
                 });
 
             _logger.LogInformation("[GetCharactersAsync] Filtered operator entries (char_*): {Count}", filtered.Count);
@@ -724,6 +727,97 @@ namespace Infrastructure.Github
             }
         }
 
+        public async Task<Dictionary<string, ItemData>?> GetItemTableAsync()
+        {
+            if (_cachedItemTable != null)
+            {
+                return _cachedItemTable;
+            }
+
+            await _itemTableLock.WaitAsync();
+            try
+            {
+                if (_cachedItemTable != null)
+                {
+                    return _cachedItemTable;
+                }
+
+                string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "item_table.json");
+                var opts = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: true) }
+                };
+
+                // 1. Check local disk cache
+                if (File.Exists(localpath))
+                {
+                    try
+                    {
+                        var json = await File.ReadAllTextAsync(localpath, Encoding.UTF8);
+                        var dict = ParseFlatBuffersJsonToDictionary<ItemData>(json, opts);
+                        if (dict.Count == 0)
+                        {
+                            using var doc = JsonDocument.Parse(json);
+                            if (doc.RootElement.TryGetProperty("items", out var itemsElem))
+                            {
+                                dict = JsonSerializer.Deserialize<Dictionary<string, ItemData>>(itemsElem.GetRawText(), opts) ?? new();
+                            }
+                        }
+                        if (dict.Count > 0)
+                        {
+                            _logger.LogInformation("[GetItemTableAsync] Loaded {Count} items from local cache.", dict.Count);
+                            _cachedItemTable = dict;
+                            return dict;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[GetItemTableAsync] Error parsing local item_table.json. Fetching fresh from remote...");
+                    }
+                }
+
+                // 2. Fetch raw item_table.json directly from repository
+                string[] remoteUrls = new[]
+                {
+                    "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/refs/heads/master/en/gamedata/excel/item_table.json",
+                    "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData_YoStar/main/en_US/gamedata/excel/item_table.json"
+                };
+
+                foreach (var url in remoteUrls)
+                {
+                    try
+                    {
+                        _logger.LogInformation("[GetItemTableAsync] Fetching raw JSON from: {Url}", url);
+                        var rawJson = await _httpClient.GetStringAsync(url);
+                        using var doc = JsonDocument.Parse(rawJson);
+                        if (doc.RootElement.TryGetProperty("items", out var itemsElem))
+                        {
+                            var dict = JsonSerializer.Deserialize<Dictionary<string, ItemData>>(itemsElem.GetRawText(), opts) ?? new();
+                            if (dict.Count > 0)
+                            {
+                                var normalized = JsonSerializer.Serialize(dict, opts);
+                                await File.WriteAllTextAsync(localpath, normalized, Encoding.UTF8);
+                                _logger.LogInformation("[GetItemTableAsync] Successfully loaded and cached {Count} items.", dict.Count);
+                                _cachedItemTable = dict;
+                                return dict;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[GetItemTableAsync] Failed to fetch raw JSON from {Url}", url);
+                    }
+                }
+
+                return new Dictionary<string, ItemData>();
+            }
+            finally
+            {
+                _itemTableLock.Release();
+            }
+        }
+
         public async Task ResetCache()
         {
             _cachedCharacters = null;
@@ -733,6 +827,7 @@ namespace Infrastructure.Github
             _cachedUniEquipData = null;
             _cachedUniEquipMissions = null;
             _cachedBattleEquipData = null;
+            _cachedItemTable = null;
             _memoryDirectoryCache = null;
 
             string localpath1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table.json");
@@ -741,10 +836,11 @@ namespace Infrastructure.Github
             string localpath4 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_table.json");
             string localpath4Missions = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uniequip_mission_table.json");
             string localpath5 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "battle_equip_table.json");
+            string localpathItem = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "item_table.json");
             // NOTE: range_table.json contains static game definitions (72 entries, invariant across game updates).
             // Newer .bytes files cannot be decoded via flatc, so the static local cache must NOT be deleted.
 
-            _logger.LogInformation("[ResetCache] Resetting local data cache (character, skill). Range table is static and will NOT be cleared.");
+            _logger.LogInformation("[ResetCache] Resetting local data cache (character, skill, uniequip, item). Range table is static and will NOT be cleared.");
 
             if (File.Exists(localpath1))
             {
@@ -776,12 +872,18 @@ namespace Infrastructure.Github
                 File.Delete(localpath5);
                 _logger.LogInformation("[ResetCache] Deleted local cache: battle_equip_table.json");
             }
+            if (File.Exists(localpathItem))
+            {
+                File.Delete(localpathItem);
+                _logger.LogInformation("[ResetCache] Deleted local cache: item_table.json");
+            }
 
             _logger.LogInformation("[ResetCache] Fetching fresh data from GitHub...");
             await GetCharactersAsync();
             await GetSkillTableAsync();
             await GetUniEquipTableAsync();
             await GetBattleEquipTableAsync();
+            await GetItemTableAsync();
             // NOTE: Do not call GetRangeTableAsync() here because range_table relies on static local cache
             // and avoids flatc execution to prevent crash exit code -1073741819.
             _logger.LogInformation("[ResetCache] Cache reset complete.");

@@ -1,0 +1,55 @@
+@using Core.Models.Entities
+@inject Core.Services.CharacterService CharacterService
+
+<div class="a9-item-badge tier-@Tier" title="@TooltipText">
+    <div class="a9-item-icon-box">
+        <img class="a9-item-img"
+             src="@LocalIconUrl"
+             alt="@DisplayName"
+             loading="lazy"
+             onerror="this.onerror=function(){this.onerror=function(){this.onerror=null;this.src='/assets/icons/characterdetail/sprite_profession.png';};this.src='@FallbackAceshipUrl';};this.src='@RemoteIconUrl';" />
+        <span class="a9-item-tier-bar"></span>
+    </div>
+    @if (Count > 0)
+    {
+        <div class="a9-item-count">@FormatCount(Count)</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? ItemId { get; set; }
+    [Parameter] public int Count { get; set; }
+    [Parameter] public string? CustomName { get; set; }
+
+    private ItemData? itemInfo;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(ItemId))
+        {
+            itemInfo = await CharacterService.GetItemAsync(ItemId);
+        }
+    }
+
+    private int Tier => itemInfo?.RarityTier ?? 1;
+    private string DisplayName => CustomName ?? itemInfo?.Name ?? ItemId ?? "Item";
+    private string TooltipText => !string.IsNullOrEmpty(itemInfo?.Description) 
+        ? $"{DisplayName}\n{itemInfo.Description}" 
+        : DisplayName;
+
+    private string IconName => (!string.IsNullOrEmpty(itemInfo?.IconId) ? itemInfo.IconId : (ItemId ?? "sprite_profession")).ToLower();
+
+    private string LocalIconUrl => !string.IsNullOrEmpty(IconName) && IconName != "sprite_profession"
+        ? $"/assets/icons/items/{IconName}.png"
+        : "/assets/icons/characterdetail/sprite_profession.png";
+
+    private string RemoteIconUrl => !string.IsNullOrEmpty(IconName) && IconName != "sprite_profession"
+        ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/items/icons/{IconName}.png"
+        : "/assets/icons/characterdetail/sprite_profession.png";
+
+    private string FallbackAceshipUrl => !string.IsNullOrEmpty(IconName) && IconName != "sprite_profession"
+        ? $"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/items/{IconName}.png"
+        : "/assets/icons/characterdetail/sprite_profession.png";
+
+    private string FormatCount(int c) => c >= 10000 ? $"{c / 1000}k" : c.ToString();
+}

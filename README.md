@@ -79,28 +79,39 @@ A9Tools/
 
 | Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
 | :---: | :---: | :--- | :---: | :---: | :---: |
-| [ ] | A9-301 | **Thuật toán lọc tổ hợp Tag:** Viết thuật toán tổ hợp nhận đầu vào là các Tag được chọn và trả về các Operator thỏa mãn. | 2h | ⚡ Cao | `ToDo` |
-| [ ] | A9-302 | **Xác định tổ hợp cam kết (Guaranteed):** Đánh dấu các tổ hợp tag bảo đảm ra Operator từ 4★ trở lên. | 1.5h | ⚡ Cao | `ToDo` |
-| [ ] | A9-303 | **Giao diện ma trận Tag:** Thiết kế bảng chọn Tag trực quan, click kích hoạt tag và hiển thị danh sách kết quả ngay bên dưới. | 1.5h | ⚡ Cao | `ToDo` |
+| [x] | A9-301 | **Thuật toán lọc tổ hợp Tag:** Viết thuật toán tổ hợp $C(n, k)$ nhận đầu vào là các Tag được chọn và trả về các Operator thỏa mãn (áp dụng luật 6★ Top Operator). | 2h | ⚡ Cao | `Done` |
+| [x] | A9-302 | **Xác định tổ hợp cam kết & tính xác suất (Guaranteed & Probability):** Đánh dấu các tổ hợp bảo đảm 6★, 5★, 4★+, tính tỉ lệ 100% Độc quyền (Sole Target) và tỉ lệ % cày 4★ thuần. | 1.5h | ⚡ Cao | `Done` |
+| [x] | A9-303 | **Giao diện ma trận Tag & Toolbar tính toán:** Thiết kế bảng chọn 28 Tag trực quan, thanh lọc tab nhanh, dropdown sắp xếp xác suất, ô tìm kiếm Săn tướng (Target Hunter) và hiển thị avatar icon nhỏ chuẩn Aceship. | 1.5h | ⚡ Cao | `Done` |
 
 #### 📋 Epic 4: Bảng tính Nguyên liệu - Elite & Mastery Planner (Thời gian ước lượng: ~10h)
 
 | Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
 | :---: | :---: | :--- | :---: | :---: | :---: |
-| [ ] | A9-401 | **Cấu trúc hóa nguyên liệu nâng cấp:** Parse thông tin chi tiết nguyên liệu nâng cấp (độ hiếm, tên, icon) từ `item_table.json`. | 3h | 🛠️ Trung bình | `ToDo` |
-| [ ] | A9-402 | **Thuật toán tính nguyên liệu chênh lệch:** Nhận đầu vào là trạng thái hiện tại và đích đến. Trả ra danh sách nguyên liệu và LMD cần chuẩn bị. | 4h | 🛠️ Trung bình | `ToDo` |
-| [ ] | A9-403 | **Giao diện lập kế hoạch Planner:** Hiển thị lưới icon vật phẩm kèm số lượng cần dùng. | 3h | 🛠️ Trung bình | `ToDo` |
+| [x] | A9-401 | **Cấu trúc hóa nguyên liệu nâng cấp:** Parse thông tin chi tiết nguyên liệu nâng cấp (độ hiếm, tên, icon) từ `item_table.json`, tạo component `<ItemBadge.razor />`. | 3h | 🛠️ Trung bình | `Done` |
+| [x] | A9-402 | **Bộ tính chi phí Leveling & Thăng cấp từng tướng (Modal):** Tích hợp `LevelingCostService`, popup tính LMD, EXP và danh sách nguyên liệu thăng cấp E0/E1/E2 trong Operator Detail. | 4h | 🛠️ Trung bình | `Done` |
+| [ ] | A9-403 | **Giao diện lập kế hoạch Planner tổng hợp (Multi-Operator Planner):** Lập danh sách nuôi nhiều tướng cùng lúc, tính tổng nguyên liệu cần farm và trừ kho nguyên liệu có sẵn. | 3h | 🛠️ Trung bình | `Backlog` |
 
 #### 📋 Epic 4.5: Hồ sơ Nhân vật & Đa phương tiện - Character Biography & Media Hub (Thời gian ước lượng: ~10h)
 
 > [!NOTE]
-> **Thứ tự ưu tiên triển khai:** Nút chuyển tab `Bio` đã có sẵn placeholder tại [OperatorDetail.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor#L38). Theo kế hoạch, phân hệ này sẽ được **triển khai ngay sau khi hoàn thành xong 2 hướng đề xuất trước đó** (Hướng 1: Hệ thống Vật phẩm/Nguyên liệu A9-401 và Hướng 2: Recruitment Calculator Epic 3).
+> **Thứ tự ưu tiên triển khai:** Nút chuyển tab `Bio` đã có sẵn placeholder tại [OperatorDetail.razor](file:///d:/VS_Studio/A9Tools/A9Tool/A9Tool/Components/Pages/OperatorDetail.razor#L38).
 
 | Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
 | :---: | :---: | :--- | :---: | :---: | :---: |
-| [ ] | A9-451 | **Trang phục & Trình xem Ảnh (Skins & Art Gallery):** Parse dữ liệu từ `skin_table.json`, hiển thị danh sách trang phục theo thương hiệu (Coral Coast, EPOQUE...), xem tranh minh họa đầy đủ (Splash Art, Chibi, Live2D). | 3.5h | 🎨 Thẩm mỹ | `Backlog (Sau Hướng 1 & 2)` |
-| [ ] | A9-452 | **Lồng tiếng & Lời thoại (Voice Lines & Audio Player):** Nạp `charword_table.json`, hỗ trợ đa ngôn ngữ lồng tiếng (CV JP/EN/CN/KR), tích hợp trình phát audio thoại trực tuyến và hiển thị transcript lời thoại. | 3.5h | 🎧 Âm thanh | `Backlog (Sau Hướng 1 & 2)` |
-| [ ] | A9-453 | **Hồ sơ Cá nhân & Cốt truyện (Handbook & Archive Stories):** Nạp `handbook_info_table.json`, hiển thị chi tiết kiểm tra thể chất (Physical Exam), bệnh án Oripathy (Clinical Analysis), 4 tệp hồ sơ lưu trữ và ghi chép thăng cấp (Promotion Record). | 3h | 📖 Cốt truyện | `Backlog (Sau Hướng 1 & 2)` |
+| [ ] | A9-451 | **Trang phục & Trình xem Ảnh (Skins & Art Gallery):** Parse dữ liệu từ `skin_table.json`, hiển thị danh sách trang phục theo thương hiệu (Coral Coast, EPOQUE...), xem tranh minh họa đầy đủ (Splash Art, Chibi, Live2D). | 3.5h | 🎨 Thẩm mỹ | `ToDo` |
+| [ ] | A9-452 | **Lồng tiếng & Lời thoại (Voice Lines & Audio Player):** Nạp `charword_table.json`, hỗ trợ đa ngôn ngữ lồng tiếng (CV JP/EN/CN/KR), tích hợp trình phát audio thoại trực tuyến và hiển thị transcript lời thoại. | 3.5h | 🎧 Âm thanh | `ToDo` |
+| [ ] | A9-453 | **Hồ sơ Cá nhân & Cốt truyện (Handbook & Archive Stories):** Nạp `handbook_info_table.json`, hiển thị chi tiết kiểm tra thể chất (Physical Exam), bệnh án Oripathy (Clinical Analysis), 4 tệp hồ sơ lưu trữ và ghi chép thăng cấp (Promotion Record). | 3h | 📖 Cốt truyện | `ToDo` |
+
+#### 📋 Epic 4.8: Cây Cốt Truyện & Trình Đọc Visual Novel - Storyline Tree & Story Reader (Thời gian ước lượng: ~12h)
+
+> [!TIP]
+> **Nguồn dữ liệu:** Khai thác từ `story_review_table.json`, `zone_table.json` và kho kịch bản thoại text Arknights (ArknightsStoryJson / Kengxxiao).
+
+| Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
+| :---: | :---: | :--- | :---: | :---: | :---: |
+| [ ] | A9-481 | **Cây Niên Biểu & Bản Đồ Dòng Thời Gian (Storyline Timeline Tree):** Phân chia cốt truyện theo các chương: Main Theme (Chương 0 - 14), Intermezzi (Darknights Memoir, Under Tides...), Side Story (Near Light, Il Siracusano...) và Story Collection. Thiết kế cây sơ đồ tương tác (Interactive Timeline Tree) theo chuẩn phong cách Terra. | 4h | 📖 Cốt truyện | `Backlog` |
+| [ ] | A9-482 | **Trích xuất & Xử lý Kịch bản Hội thoại:** Parse dữ liệu script đối thoại (tên nhân vật, avatar cảm xúc, đoạn thoại, câu dẫn người dẫn chuyện, phông nền Background CG và hiệu ứng âm thanh/nhạc nền BGM). | 3.5h | ⚙️ Kỹ thuật | `Backlog` |
+| [ ] | A9-483 | **Trình Đọc Visual Novel (Visual Novel Story Reader Component):** Giao diện đọc truyện toàn màn hình chuẩn phong cách game: portrait nhân vật đổi biểu cảm động, hộp thoại hội thoại, chế độ Auto-run, xem lại Lịch sử đối thoại (Log) và lựa chọn phân nhánh câu thoại (Branching Choices). | 4.5h | 🌟 Đỉnh cao | `Backlog` |
 
 ---
 

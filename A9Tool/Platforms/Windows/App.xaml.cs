@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -16,6 +16,14 @@ namespace A9Tool.WinUI
         /// </summary>
         public App()
         {
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_appdomain.txt"), e.ExceptionObject?.ToString()); } catch { }
+            };
+            this.UnhandledException += (s, e) =>
+            {
+                try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_winui.txt"), $"{e.Message}\n{e.Exception}\n{e.Handled}"); } catch { }
+            };
             this.InitializeComponent();
         }
 

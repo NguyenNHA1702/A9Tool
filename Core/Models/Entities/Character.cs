@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 public class Character
 {
@@ -21,4 +21,7 @@ public class Character
 
     [JsonPropertyName("tagList")]
     public List<string> Tags { get; set; } = new();
+
+    [JsonPropertyName("itemObtainApproach")]
+    public string? ItemObtainApproach { get; set; }
 }

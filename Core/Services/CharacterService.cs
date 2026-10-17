@@ -132,12 +132,14 @@ namespace Core.Services
                     SkillId = skill.SkillId,
                     IconId = returnSkill.IconId,
                     SkillType = (returnLevels != null && returnLevels.Count > count) ? returnLevels[count].SkillType : (returnLevels?.FirstOrDefault()?.SkillType),
-                    Levels = skillLevelDtoList
+                    Levels = skillLevelDtoList,
+                    LevelUpCostCond = skill.LevelUpCostCond ?? new(),
+                    UnlockCond = skill.UnlockCond
                 };
 
                 _logger.LogInformation(
-                    "[GetSkillsForOperatorAsync] Skill #{Index}: Id='{SkillId}', IconId='{IconId}', Type={SkillType}, Levels={LevelCount}",
-                    list.Count, dto.SkillId, dto.IconId, dto.SkillType, dto.Levels?.Count ?? 0);
+                    "[GetSkillsForOperatorAsync] Skill #{Index}: Id='{SkillId}', IconId='{IconId}', Type={SkillType}, Levels={LevelCount}, Masteries={MCount}",
+                    list.Count, dto.SkillId, dto.IconId, dto.SkillType, dto.Levels?.Count ?? 0, dto.LevelUpCostCond?.Count ?? 0);
 
                 list.Add(dto);
             }
@@ -332,5 +334,32 @@ namespace Core.Services
             _logger.LogWarning("[GetRangeDataAsync] RangeId='{RangeId}' not found in range table.", rangeId);
             return null;
         }
+
+        /// <summary>
+        /// Retrieves the entire item definition table.
+        /// </summary>
+        public async Task<Dictionary<string, ItemData>?> GetItemTableAsync()
+        {
+            return await _gameDataRepository.GetItemTableAsync();
+        }
+
+        /// <summary>
+        /// Retrieves item details for a specific item ID.
+        /// </summary>
+        public async Task<ItemData?> GetItemByIdAsync(string? itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return null;
+            var table = await _gameDataRepository.GetItemTableAsync();
+            if (table != null && table.TryGetValue(itemId, out var item))
+            {
+                return item;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Alias for GetItemByIdAsync.
+        /// </summary>
+        public Task<ItemData?> GetItemAsync(string? itemId) => GetItemByIdAsync(itemId);
     }
 }

@@ -2975,3 +2975,994 @@ body {
     font-size: 0.8rem;
     font-style: italic;
 }
+
+/* ==========================================================================
+   A9TOOL: ITEM BADGE & MODULE MATERIALS (DIRECTION 1)
+   ========================================================================== */
+
+/* Item Badge Base */
+.a9-item-badge {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    width: 58px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+}
+
+.a9-item-badge:hover {
+    transform: translateY(-2px);
+}
+
+.a9-item-icon-box {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%);
+    overflow: hidden;
+}
+
+.a9-item-img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.a9-item-tier-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 0 0 6px 6px;
+}
+
+.a9-item-count {
+    position: absolute;
+    bottom: -6px;
+    right: -4px;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f8fafc;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0 5px;
+    border-radius: 10px;
+    line-height: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.02em;
+}
+
+/* Item Tier Coloring (Arknights Tiers 1 to 5) */
+.a9-item-badge.tier-1 {
+    border-color: rgba(148, 163, 184, 0.25);
+}
+.a9-item-badge.tier-1 .a9-item-tier-bar {
+    background: #94a3b8;
+}
+.a9-item-badge.tier-1:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 14px rgba(148, 163, 184, 0.25);
+}
+
+.a9-item-badge.tier-2 {
+    border-color: rgba(74, 222, 128, 0.3);
+}
+.a9-item-badge.tier-2 .a9-item-tier-bar {
+    background: #4ade80;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
+}
+.a9-item-badge.tier-2:hover {
+    border-color: #4ade80;
+    box-shadow: 0 4px 14px rgba(74, 222, 128, 0.3);
+}
+
+.a9-item-badge.tier-3 {
+    border-color: rgba(56, 189, 248, 0.35);
+}
+.a9-item-badge.tier-3 .a9-item-tier-bar {
+    background: #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+.a9-item-badge.tier-3:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
+}
+
+.a9-item-badge.tier-4 {
+    border-color: rgba(192, 132, 252, 0.4);
+}
+.a9-item-badge.tier-4 .a9-item-tier-bar {
+    background: #c084fc;
+    box-shadow: 0 0 8px rgba(192, 132, 252, 0.7);
+}
+.a9-item-badge.tier-4:hover {
+    border-color: #c084fc;
+    box-shadow: 0 4px 16px rgba(192, 132, 252, 0.4);
+}
+
+.a9-item-badge.tier-5 {
+    border-color: rgba(251, 191, 36, 0.5);
+    background: linear-gradient(180deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+}
+.a9-item-badge.tier-5 .a9-item-tier-bar {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+}
+.a9-item-badge.tier-5:hover {
+    border-color: #fbbf24;
+    box-shadow: 0 4px 18px rgba(251, 191, 36, 0.45);
+}
+
+/* Module Materials Container in Operator Detail */
+.od-mod-materials-box {
+    margin-top: 14px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.od-mod-mat-stages {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.od-mod-stage-cost-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 12px;
+    background: rgba(30, 41, 59, 0.45);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.od-mod-stage-tag {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 4px;
+    padding: 3px 8px;
+    white-space: nowrap;
+}
+
+.od-mod-stage-items {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* ==========================================================================
+   A9TOOL: RECRUITMENT CALCULATOR (DIRECTION 2)
+   ========================================================================== */
+
+.rec-container {
+    padding: 24px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    color: #f1f5f9;
+}
+
+.rec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 16px;
+}
+
+.rec-header-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rec-header-title span {
+    color: #38bdf8;
+}
+
+/* Actions & Selected counter */
+.rec-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rec-selected-count {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.rec-selected-count b {
+    color: #38bdf8;
+}
+
+.rec-btn-clear {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rec-btn-clear:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+    color: #ffffff;
+}
+
+/* Tag Selection Matrix Panel */
+.rec-matrix-panel {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.rec-tag-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.rec-group-title {
+    width: 120px;
+    flex-shrink: 0;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    padding-top: 6px;
+}
+
+.rec-tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: 1;
+}
+
+/* Tag Button */
+.rec-tag-btn {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rec-tag-btn:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #ffffff;
+    background: rgba(51, 65, 85, 0.9);
+}
+
+.rec-tag-btn.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+}
+
+/* Special Tag Highlights */
+.rec-tag-btn.tag-top.active {
+    background: #d97706;
+    border-color: #fbbf24;
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.55);
+}
+
+.rec-tag-btn.tag-senior.active {
+    background: #9333ea;
+    border-color: #c084fc;
+    box-shadow: 0 0 14px rgba(192, 132, 252, 0.55);
+}
+
+.rec-tag-btn.tag-robot.active {
+    background: #0d9488;
+    border-color: #2dd4bf;
+    box-shadow: 0 0 12px rgba(45, 212, 191, 0.45);
+}
+
+/* Results Panel */
+.rec-results-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.rec-results-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rec-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Combination Result Card */
+.rec-combo-card {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rec-combo-card:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Combination Header */
+.rec-combo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.rec-combo-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rec-combo-tag-pill {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 4px;
+}
+
+/* Guarantee Badges */
+.rec-combo-badge {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Tier 6 (Top Operator) Guaranteed */
+.rec-combo-card.tier-6 {
+    border-color: rgba(251, 191, 36, 0.5);
+    background: linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%);
+    box-shadow: 0 4px 18px rgba(251, 191, 36, 0.15);
+}
+.rec-combo-card.tier-6 .rec-combo-badge {
+    background: rgba(251, 191, 36, 0.2);
+    border: 1px solid #fbbf24;
+    color: #fbbf24;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+}
+
+/* Tier 5 (Senior Operator) Guaranteed */
+.rec-combo-card.tier-5 {
+    border-color: rgba(192, 132, 252, 0.45);
+    background: linear-gradient(135deg, rgba(46, 16, 101, 0.5) 0%, rgba(15, 23, 42, 0.85) 100%);
+    box-shadow: 0 4px 16px rgba(192, 132, 252, 0.12);
+}
+.rec-combo-card.tier-5 .rec-combo-badge {
+    background: rgba(192, 132, 252, 0.2);
+    border: 1px solid #c084fc;
+    color: #c084fc;
+    box-shadow: 0 0 8px rgba(192, 132, 252, 0.4);
+}
+
+/* Tier 4+ Guaranteed */
+.rec-combo-card.guaranteed-4 {
+    border-color: rgba(249, 115, 22, 0.4);
+    background: linear-gradient(135deg, rgba(67, 20, 7, 0.4) 0%, rgba(15, 23, 42, 0.85) 100%);
+}
+.rec-combo-card.guaranteed-4 .rec-combo-badge {
+    background: rgba(249, 115, 22, 0.2);
+    border: 1px solid #f97316;
+    color: #fb923c;
+}
+
+/* Normal / Possible 3 Star */
+.rec-combo-card.normal .rec-combo-badge {
+    background: rgba(148, 163, 184, 0.15);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #94a3b8;
+}
+
+/* Matched Operators Row */
+.rec-matched-ops {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rec-op-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 3px 8px 3px 4px;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.rec-op-chip:hover {
+    transform: translateY(-2px);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.rec-op-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: #0f172a;
+}
+
+.rec-op-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.rec-op-rarity {
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+/* Operator Rarity Colors */
+.rec-op-chip.star-6 { border-color: rgba(251, 191, 36, 0.4); }
+.rec-op-chip.star-6 .rec-op-name { color: #fbbf24; }
+.rec-op-chip.star-6 .rec-op-rarity { color: #fbbf24; }
+
+.rec-op-chip.star-5 { border-color: rgba(192, 132, 252, 0.4); }
+.rec-op-chip.star-5 .rec-op-name { color: #c084fc; }
+.rec-op-chip.star-5 .rec-op-rarity { color: #c084fc; }
+
+.rec-op-chip.star-4 { border-color: rgba(56, 189, 248, 0.35); }
+.rec-op-chip.star-4 .rec-op-name { color: #38bdf8; }
+.rec-op-chip.star-4 .rec-op-rarity { color: #38bdf8; }
+
+.rec-op-chip.star-3 { border-color: rgba(148, 163, 184, 0.2); }
+.rec-op-chip.star-3 .rec-op-name { color: #94a3b8; }
+.rec-op-chip.star-3 .rec-op-rarity { color: #94a3b8; }
+
+.rec-op-chip.star-2, .rec-op-chip.star-1 { border-color: rgba(100, 116, 139, 0.2); }
+.rec-op-chip.star-2 .rec-op-name, .rec-op-chip.star-1 .rec-op-name { color: #64748b; }
+
+/* Recruitment Probability Toolbar & Enhancements */
+.rec-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+.rec-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.rec-filter-tab {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.rec-filter-tab:hover {
+    color: #f1f5f9;
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.rec-filter-tab.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+.rec-filter-tab.tab-sole.active {
+    background: #059669;
+    border-color: #34d399;
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+}
+
+.rec-filter-tab.tab-6.active {
+    background: #d97706;
+    border-color: #fbbf24;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+}
+
+.rec-filter-tab.tab-5.active {
+    background: #9333ea;
+    border-color: #c084fc;
+    box-shadow: 0 0 12px rgba(192, 132, 252, 0.4);
+}
+
+.rec-filter-tab.tab-pure4.active {
+    background: #c2410c;
+    border-color: #fb923c;
+    box-shadow: 0 0 12px rgba(251, 146, 60, 0.4);
+}
+
+.rec-toolbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.rec-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.rec-search-input {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 5px 10px 5px 28px;
+    font-size: 0.78rem;
+    color: #f1f5f9;
+    outline: none;
+    transition: border-color 0.2s ease;
+    width: 180px;
+}
+
+.rec-search-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.rec-search-icon {
+    position: absolute;
+    left: 8px;
+    font-size: 0.78rem;
+    color: #64748b;
+    pointer-events: none;
+}
+
+.rec-sort-select {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    outline: none;
+    cursor: pointer;
+}
+
+.rec-sort-select:focus {
+    border-color: #38bdf8;
+}
+
+/* Tier Sole (100% 1 Operator) Card */
+.rec-combo-card.tier-sole {
+    border-color: rgba(52, 211, 153, 0.55);
+    background: linear-gradient(135deg, rgba(6, 78, 59, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%);
+    box-shadow: 0 4px 18px rgba(52, 211, 153, 0.18);
+}
+
+.rec-combo-card.tier-sole .rec-combo-badge {
+    background: rgba(52, 211, 153, 0.2);
+    border: 1px solid #34d399;
+    color: #34d399;
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+}
+
+.rec-op-chance {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    border-radius: 3px;
+    padding: 1px 4px;
+}
+
+.rec-op-chip.target-match {
+    border-color: #fbbf24 !important;
+    background: rgba(251, 191, 36, 0.25) !important;
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.45);
+    transform: scale(1.05);
+}
+
+/* ==========================================================================
+   Level & Promotion Materials in Level Modal
+   ========================================================================== */
+.od-modal-card.level-modal {
+    max-width: 500px;
+    max-height: 88vh;
+}
+
+.od-modal-card.level-modal .od-modal-body {
+    overflow-y: auto;
+    max-height: calc(88vh - 120px);
+}
+
+.od-modal-costs-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.od-modal-cost-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.od-modal-cost-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.od-modal-cost-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.od-exp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.od-cost-range-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.od-cost-from-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.od-cost-from-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+    min-width: 44px;
+}
+
+.od-level-input-sm {
+    width: 48px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    color: #fbbf24;
+    font-weight: 800;
+    font-size: 0.82rem;
+    text-align: center;
+    padding: 2px 4px;
+}
+
+.od-lv-slider-sm {
+    flex: 1;
+    height: 4px;
+    accent-color: #fbbf24;
+    cursor: pointer;
+}
+
+.od-cost-from-presets {
+    display: flex;
+    gap: 5px;
+    padding-left: 52px;
+}
+
+.od-preset-btn-sm {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.od-preset-btn-sm:hover,
+.od-preset-btn-sm.active {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: #fbbf24;
+    color: #fbbf24;
+}
+
+.od-modal-empty-hint {
+    font-size: 0.74rem;
+    color: #64748b;
+    font-style: italic;
+    padding: 2px 0;
+}
+
+/* ==========================================================================
+   Skill Upgrade & Mastery Modal
+   ========================================================================== */
+.od-skill-modal-card {
+    width: 100%;
+    max-width: 580px;
+    max-height: 88vh;
+    background: rgba(20, 22, 30, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.od-skill-modal-icon {
+    font-size: 1.1rem;
+    margin-right: 6px;
+}
+
+.od-skill-modal-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.od-skill-modal-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.od-skill-modal-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.od-skill-modal-tab-btn.active {
+    background: rgba(96, 165, 250, 0.2);
+    border-color: #60a5fa;
+    color: #60a5fa;
+}
+
+.od-skill-modal-tab-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    object-fit: contain;
+}
+
+.od-skill-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    max-height: calc(88vh - 140px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.od-skill-modal-target-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+.od-skill-modal-target-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 2px;
+}
+
+.od-skill-modal-target-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #f8fafc;
+}
+
+.od-skill-modal-target-type {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+
+.od-skill-modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.od-skill-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.od-skill-section-badge {
+    background: #3b82f6;
+    color: #000;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+
+.od-skill-section-badge.mastery {
+    background: #f59e0b;
+    color: #000;
+}
+
+.od-skill-section-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.od-skill-level-costs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.od-skill-cost-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+.od-skill-cost-row.mastery {
+    border-color: rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.od-skill-cost-rank-badge {
+    display: flex;
+    flex-direction: column;
+    min-width: 90px;
+}
+
+.od-skill-cost-rank-badge .od-rank-text {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #60a5fa;
+}
+
+.od-skill-cost-rank-badge.mastery .od-rank-text {
+    color: #fbbf24;
+}
+
+.od-training-time {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.od-skill-cost-items {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: 1;
+}

@@ -1,0 +1,404 @@
+@page "/recruitment"
+@using Core.Models.Entities
+@using Core.Services
+@inject RecruitmentService RecService
+@inject NavigationManager Nav
+
+<div class="rec-container">
+    <!-- 1. HEADER BAR -->
+    <div class="rec-header">
+        <div class="rec-header-title">
+            <span>📋</span> Recruitment Calculator
+        </div>
+        <div class="rec-actions-bar">
+            <span class="rec-selected-count">Selected: <b>@selectedTags.Count</b> / 5</span>
+            @if (selectedTags.Count > 0)
+            {
+                <button class="rec-btn-clear" @onclick="ClearAll">Clear All ✕</button>
+            }
+        </div>
+    </div>
+
+    <!-- 2. MA TRẬN 28 TAGS (4 NHÓM) -->
+    <div class="rec-matrix-panel">
+        <!-- Nhóm 1: Qualification -->
+        <div class="rec-tag-group">
+            <span class="rec-group-title">Qualification</span>
+            <div class="rec-tags-row">
+                @foreach (var tag in QualificationTags)
+                {
+                    var isSelected = selectedTags.Contains(tag);
+                    var extraClass = tag switch
+                    {
+                        "Top Operator" => "tag-top",
+                        "Senior Operator" => "tag-senior",
+                        "Robot" => "tag-robot",
+                        _ => ""
+                    };
+                    <button class="rec-tag-btn @extraClass @(isSelected ? "active" : "")"
+                            @onclick="() => ToggleTag(tag)">
+                        @tag
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Nhóm 2: Position -->
+        <div class="rec-tag-group">
+            <span class="rec-group-title">Position</span>
+            <div class="rec-tags-row">
+                @foreach (var tag in PositionTags)
+                {
+                    var isSelected = selectedTags.Contains(tag);
+                    <button class="rec-tag-btn @(isSelected ? "active" : "")"
+                            @onclick="() => ToggleTag(tag)">
+                        @tag
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Nhóm 3: Classes -->
+        <div class="rec-tag-group">
+            <span class="rec-group-title">Classes</span>
+            <div class="rec-tags-row">
+                @foreach (var tag in ClassTags)
+                {
+                    var isSelected = selectedTags.Contains(tag);
+                    <button class="rec-tag-btn @(isSelected ? "active" : "")"
+                            @onclick="() => ToggleTag(tag)">
+                        @tag
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Nhóm 4: Afflictions -->
+        <div class="rec-tag-group">
+            <span class="rec-group-title">Afflictions</span>
+            <div class="rec-tags-row">
+                @foreach (var tag in AfflictionTags)
+                {
+                    var isSelected = selectedTags.Contains(tag);
+                    <button class="rec-tag-btn @(isSelected ? "active" : "")"
+                            @onclick="() => ToggleTag(tag)">
+                        @tag
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. KHU VỰC KẾT QUẢ TỔ HỢP -->
+    <div class="rec-results-panel">
+        @if (isLoading)
+        {
+            <div style="text-align: center; color: #94a3b8; padding: 28px;">
+                <span>Calculating combinations...</span>
+            </div>
+        }
+        else if (selectedTags.Count == 0)
+        {
+            <div style="text-align: center; color: #64748b; padding: 36px;">
+                <span>Select up to 5 tags above to calculate guaranteed recruitment combinations.</span>
+            </div>
+        }
+        else if (combinations.Count == 0)
+        {
+            <div style="text-align: center; color: #f87171; padding: 36px;">
+                <span>No operators match any combination of the selected tags.</span>
+            </div>
+        }
+        else
+        {
+            <!-- TOOLBAR LỌC XÁC SUẤT, SẮP XẾP & SĂN TƯỚNG -->
+            <div class="rec-toolbar">
+                <div class="rec-filter-tabs">
+                    <button class="rec-filter-tab @(activeFilter == "ALL" ? "active" : "")" 
+                            @onclick='() => activeFilter = "ALL"'>
+                        All (@combinations.Count)
+                    </button>
+
+                    @if (CountSole > 0)
+                    {
+                        <button class="rec-filter-tab tab-sole @(activeFilter == "SOLE" ? "active" : "")" 
+                                @onclick='() => activeFilter = "SOLE"'>
+                            🎯 100% Sole Target (@CountSole)
+                        </button>
+                    }
+
+                    @if (Count6 > 0)
+                    {
+                        <button class="rec-filter-tab tab-6 @(activeFilter == "STAR6" ? "active" : "")" 
+                                @onclick='() => activeFilter = "STAR6"'>
+                            ★ 6★ Top Operator (@Count6)
+                        </button>
+                    }
+
+                    @if (Count5 > 0)
+                    {
+                        <button class="rec-filter-tab tab-5 @(activeFilter == "STAR5" ? "active" : "")" 
+                                @onclick='() => activeFilter = "STAR5"'>
+                            ★ 5★ Senior Operator (@Count5)
+                        </button>
+                    }
+
+                    @if (CountPure4 > 0)
+                    {
+                        <button class="rec-filter-tab tab-pure4 @(activeFilter == "PURE4" ? "active" : "")" 
+                                @onclick='() => activeFilter = "PURE4"' 
+                                title="Combinations with 100% 4-star operators only">
+                            🛡️ 100% Pure 4★ (@CountPure4)
+                        </button>
+                    }
+
+                    @if (Count4Plus > 0)
+                    {
+                        <button class="rec-filter-tab @(activeFilter == "STAR4" ? "active" : "")" 
+                                @onclick='() => activeFilter = "STAR4"'>
+                            ★ 4★+ Guaranteed (@Count4Plus)
+                        </button>
+                    }
+                </div>
+
+                <div class="rec-toolbar-controls">
+                    <!-- Search Hunter Box -->
+                    <div class="rec-search-box">
+                        <span class="rec-search-icon">🔍</span>
+                        <input type="text" class="rec-search-input" 
+                               placeholder="Target Hunter (e.g. Vulcan, Texas...)" 
+                               @bind="targetQuery" 
+                               @bind:event="oninput" />
+                    </div>
+
+                    <!-- Sort Mode Select -->
+                    <select class="rec-sort-select" @bind="sortMode">
+                        <option value="DEFAULT">Sort: Default</option>
+                        <option value="RATE_4STAR">Highest 4★ Rate (% 4★)</option>
+                        <option value="MOST_4STAR">Most 4★ Operators (Cert Farm)</option>
+                        <option value="CHANCE">Highest Single Target Chance</option>
+                        <option value="TAGS_ASC">Fewest Tags First</option>
+                    </select>
+                </div>
+            </div>
+
+            var displayList = FilteredCombinations.ToList();
+
+            <div class="rec-results-title">
+                <span>Combinations Found (@displayList.Count / @combinations.Count)</span>
+            </div>
+
+            @if (displayList.Count == 0)
+            {
+                <div style="text-align: center; color: #94a3b8; padding: 24px;">
+                    <span>No combinations match the active filter or target search.</span>
+                </div>
+            }
+            else
+            {
+                <div class="rec-results-grid">
+                    @foreach (var combo in displayList)
+                    {
+                        var cardTierClass = combo.IsSoleOperator ? "tier-sole"
+                            : (combo.Has6Star ? "tier-6" 
+                            : (combo.IsGuaranteed5Plus || combo.Tags.Contains("Senior Operator") ? "tier-5"
+                            : (combo.IsPure4Star ? "guaranteed-4"
+                            : (combo.IsGuaranteed4Plus ? "guaranteed-4" : "normal"))));
+
+                        <div class="rec-combo-card @cardTierClass">
+                            <div class="rec-combo-header">
+                                <div class="rec-combo-tags">
+                                    @foreach (var t in combo.Tags)
+                                    {
+                                        <span class="rec-combo-tag-pill">@t</span>
+                                    }
+                                </div>
+                                <div class="rec-combo-badge">
+                                    <span>@combo.ProbabilityBadge</span>
+                                </div>
+                            </div>
+
+                            <div class="rec-matched-ops">
+                                @foreach (var op in combo.MatchedOperators)
+                                {
+                                    var tier = RecruitmentCombinationResult.GetTier(op.Rarity);
+                                    var isTargetMatch = !string.IsNullOrWhiteSpace(targetQuery) && 
+                                                        op.Name != null && 
+                                                        op.Name.Contains(targetQuery, StringComparison.OrdinalIgnoreCase);
+
+                                    <div class="rec-op-chip star-@tier @(isTargetMatch ? "target-match" : "")" 
+                                         @onclick="() => NavigateToOperator(op.Id)" 
+                                         title="@op.Name (@tier★) - Chance: @(combo.IsSoleOperator ? "100%" : (combo.TargetChance > 0 ? $"{combo.TargetChance}%" : "Gacha"))">
+                                        
+                                        <!-- Small Square Avatar Icon from GitHub Aceship, fallback to charportraits -->
+                                        <img class="rec-op-avatar" 
+                                             src="@GetAvatarUrl(op.Id)" 
+                                             onerror="this.onerror=null;this.src='@GetPortraitFallbackUrl(op.Id)'" />
+                                        
+                                        <span class="rec-op-name">@op.Name</span>
+                                        <span class="rec-op-rarity">@tier★</span>
+
+                                        @if (combo.TargetChance > 0 || combo.IsSoleOperator)
+                                        {
+                                            <span class="rec-op-chance">
+                                                @(combo.IsSoleOperator ? "100%" : $"{combo.TargetChance}%")
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<string> selectedTags = [];
+    private List<RecruitmentCombinationResult> combinations = [];
+    private bool isLoading = false;
+
+    // Filter, Search & Sort States
+    private string activeFilter = "ALL";
+    private string sortMode = "DEFAULT";
+    private string targetQuery = "";
+
+    private static readonly string[] QualificationTags = ["Top Operator", "Senior Operator", "Starter", "Robot"];
+    private static readonly string[] PositionTags = ["Melee", "Ranged"];
+    private static readonly string[] ClassTags = ["Vanguard", "Guard", "Defender", "Sniper", "Caster", "Medic", "Supporter", "Specialist"];
+    private static readonly string[] AfflictionTags = [
+        "Healing", "DPS", "Defense", "Survival", "AoE", "Slow", 
+        "Crowd-Control", "Fast-Redeploy", "Shift", "Debuff", "Support", 
+        "DP-Recovery", "Nuker", "Summon"
+    ];
+
+    private int CountSole => combinations.Count(c => c.IsSoleOperator);
+    private int Count6 => combinations.Count(c => c.Has6Star);
+    private int Count5 => combinations.Count(c => c.IsGuaranteed5Plus || c.Tags.Contains("Senior Operator"));
+    private int CountPure4 => combinations.Count(c => c.IsPure4Star);
+    private int Count4Plus => combinations.Count(c => c.IsGuaranteed4Plus);
+
+    private IEnumerable<RecruitmentCombinationResult> FilteredCombinations
+    {
+        get
+        {
+            var query = combinations.AsEnumerable();
+
+            // 1. Filter by Quick Tab
+            query = activeFilter switch
+            {
+                "SOLE" => query.Where(c => c.IsSoleOperator),
+                "STAR6" => query.Where(c => c.Has6Star),
+                "STAR5" => query.Where(c => c.IsGuaranteed5Plus || c.Tags.Contains("Senior Operator")),
+                "PURE4" => query.Where(c => c.IsPure4Star),
+                "STAR4" => query.Where(c => c.IsGuaranteed4Plus),
+                _ => query
+            };
+
+            // 2. Filter by Target Operator Search
+            if (!string.IsNullOrWhiteSpace(targetQuery))
+            {
+                query = query.Where(c => c.MatchedOperators.Any(op => 
+                    op.Name != null && op.Name.Contains(targetQuery, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            // 3. Sort by SortMode
+            query = sortMode switch
+            {
+                "RATE_4STAR" => query.OrderByDescending(c => c.Star4Rate)
+                                     .ThenByDescending(c => c.Star4Count)
+                                     .ThenBy(c => c.Tags.Count),
+                "MOST_4STAR" => query.OrderByDescending(c => c.Star4Count)
+                                     .ThenByDescending(c => c.Star4Rate)
+                                     .ThenBy(c => c.Tags.Count),
+                "CHANCE" => query.OrderByDescending(c => c.IsSoleOperator)
+                                 .ThenBy(c => c.OperatorCount)
+                                 .ThenByDescending(c => c.MinRarity),
+                "TAGS_ASC" => query.OrderBy(c => c.Tags.Count)
+                                   .ThenByDescending(c => c.MinRarity),
+                _ => (!string.IsNullOrWhiteSpace(targetQuery)
+                    ? query.OrderByDescending(c => c.IsSoleOperator)
+                           .ThenBy(c => c.OperatorCount)
+                           .ThenByDescending(c => c.MinRarity)
+                    : query)
+            };
+
+            return query;
+        }
+    }
+
+    private async Task ToggleTag(string tag)
+    {
+        if (selectedTags.Contains(tag))
+        {
+            selectedTags.Remove(tag);
+        }
+        else
+        {
+            if (selectedTags.Count >= 5) return;
+            selectedTags.Add(tag);
+        }
+
+        await RecalculateAsync();
+    }
+
+    private async Task ClearAll()
+    {
+        selectedTags.Clear();
+        combinations.Clear();
+        targetQuery = "";
+        activeFilter = "ALL";
+        await Task.CompletedTask;
+    }
+
+    private async Task RecalculateAsync()
+    {
+        if (selectedTags.Count == 0)
+        {
+            combinations.Clear();
+            return;
+        }
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            combinations = await RecService.CalculateCombinationsAsync(selectedTags);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NavigateToOperator(string? id)
+    {
+        if (!string.IsNullOrEmpty(id))
+        {
+            Nav.NavigateTo($"/operators/{id}");
+        }
+    }
+
+    /// <summary>
+    /// Sử dụng ảnh Avatar icon vuông dung lượng nhỏ (~40KB) từ Aceship GitHub.
+    /// </summary>
+    private static string GetAvatarUrl(string? charId)
+    {
+        if (string.IsNullOrEmpty(charId)) return "";
+        var id = charId.ToLower();
+        return $"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avatars/{id}.png";
+    }
+
+    /// <summary>
+    /// Dự phòng sang character portrait từ ArknightsAssets2 nếu link Aceship lỗi.
+    /// </summary>
+    private static string GetPortraitFallbackUrl(string? charId)
+    {
+        if (string.IsNullOrEmpty(charId)) return "/assets/icons/characterdetail/back_round.png";
+        var id = charId.ToLower();
+        return $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{id}_1.png";
+    }
+}

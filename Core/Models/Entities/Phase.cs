@@ -10,6 +10,10 @@ public class Phase
 
     [JsonPropertyName("attributesKeyFrames")]
     public List<AttributeKeyFrame> AttributesKeyFrames { get; set; } = new();
+
+    [JsonPropertyName("evolveCost")]
+    [JsonConverter(typeof(Core.Models.FlexibleListConverter<Core.Enums.ItemBundle>))]
+    public List<Core.Enums.ItemBundle>? EvolveCost { get; set; } = new();
 }
 
 public class AttributeKeyFrame

@@ -2,8 +2,11 @@
 @using Core.DTOs.Response
 @using Core.Helpers
 @using Core.Models.Entities
+@using Core.Enums
+@using Core.Services
 @inject Core.Services.CharacterService service
 @inject Core.Services.ImageService ImageService
+@inject Core.Services.LevelingCostService LevelService
 @inject NavigationManager Nav
 @using Microsoft.Extensions.Logging;
 
@@ -441,7 +444,7 @@ else
                                             <span class="od-default-skill-badge">Default Skill</span>
                                             <div class="od-rank-specialize-group">
                                                 <span class="od-rank-badge">RANK <b>@(selectedSkillLevel + 1)</b></span>
-                                                <button class="od-specialize-btn">🔺 Specialize skill</button>
+                                                <button class="od-specialize-btn" @onclick="OpenSkillUpgradeModal">🔺 Upgrade Materials</button>
                                             </div>
                                         </div>
 
@@ -705,7 +708,7 @@ else
         @if (showLevelModal && op != null)
         {
             <div class="od-modal-backdrop" @onclick="() => showLevelModal = false">
-                <div class="od-modal-card" @onclick:stopPropagation="true">
+                <div class="od-modal-card level-modal" @onclick:stopPropagation="true">
                     <div class="od-modal-header">
                         <h3 class="od-modal-title">⚙️ Select Level & Elite Rank - @op.Name</h3>
                         <button class="od-modal-close-btn" @onclick="() => showLevelModal = false">✕</button>
@@ -759,9 +762,249 @@ else
                             <div class="od-modal-stat-chip">Cost: <b>@currentPreviewStats.Cost</b></div>
                             <div class="od-modal-stat-chip">Block: <b>@currentPreviewStats.BlockCnt</b></div>
                         </div>
+
+                        <!-- LEVEL COST & PROMOTION MATERIALS BREAKDOWN -->
+                        <div class="od-modal-costs-section">
+                            <!-- Leveling Cost (From Level -> currentLevel) -->
+                            @{
+                                var effectiveFrom = Math.Clamp(costFromLevel, 1, currentLevel);
+                                var lvlCost = GetLevelCostPreview();
+                            }
+                            <div class="od-modal-cost-block">
+                                <div class="od-modal-cost-title">
+                                    <span>📈 Leveling Cost: Lv @effectiveFrom ➔ Lv @currentLevel</span>
+                                </div>
+
+                                <!-- Range Controls for From Level -->
+                                <div class="od-cost-range-controls">
+                                    <div class="od-cost-from-input-group">
+                                        <span class="od-cost-from-label">From Lv:</span>
+                                        <input type="number"
+                                               min="1"
+                                               max="@currentLevel"
+                                               value="@costFromLevel"
+                                               @onchange="OnCostFromLevelChanged"
+                                               class="od-level-input-sm" />
+                                        <input type="range"
+                                               min="1"
+                                               max="@currentLevel"
+                                               @bind="costFromLevel"
+                                               @bind:event="oninput"
+                                               class="od-lv-slider-sm" />
+                                    </div>
+                                    <div class="od-cost-from-presets">
+                                        <button class="od-preset-btn-sm @(costFromLevel == 1 ? "active" : "")" @onclick="() => costFromLevel = 1">Lv 1</button>
+                                        @if (currentLevel > 20)
+                                        {
+                                            <button class="od-preset-btn-sm @(costFromLevel == 20 ? "active" : "")" @onclick="() => costFromLevel = 20">Lv 20</button>
+                                        }
+                                        @if (currentLevel > 40)
+                                        {
+                                            <button class="od-preset-btn-sm @(costFromLevel == 40 ? "active" : "")" @onclick="() => costFromLevel = 40">Lv 40</button>
+                                        }
+                                        @if (currentLevel > 60)
+                                        {
+                                            <button class="od-preset-btn-sm @(costFromLevel == 60 ? "active" : "")" @onclick="() => costFromLevel = 60">Lv 60</button>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="od-modal-cost-badges">
+                                    @if (currentLevel <= effectiveFrom)
+                                    {
+                                        <span class="od-modal-empty-hint">Already at Lv @currentLevel — 0 EXP / 0 LMD required.</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="od-exp-chip">⭐ @(lvlCost.TotalExp.ToString("N0")) EXP</span>
+                                        <A9Tool.Components.Common.ItemBadge ItemId="4001" Count="@lvlCost.TotalLmd" />
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Promotion Materials (E@elite) -->
+                            <div class="od-modal-cost-block">
+                                <div class="od-modal-cost-title">
+                                    <span>🎖️ Promotion Requirements (E@(elite))</span>
+                                </div>
+                                @if (elite == 0)
+                                {
+                                    <div class="od-modal-empty-hint">Base Form — No promotion materials required.</div>
+                                }
+                                else
+                                {
+                                    var promLmd = GetPromotionLmdCostPreview();
+                                    var promItems = GetPromotionMaterialsPreview();
+
+                                    <div class="od-modal-cost-badges">
+                                        @if (promLmd > 0)
+                                        {
+                                            <A9Tool.Components.Common.ItemBadge ItemId="4001" Count="@promLmd" />
+                                        }
+                                        @if (promItems.Count > 0)
+                                        {
+                                            @foreach (var it in promItems)
+                                            {
+                                                <A9Tool.Components.Common.ItemBadge ItemId="@it.Id" Count="@it.Count" />
+                                            }
+                                        }
+                                        else if (promLmd == 0)
+                                        {
+                                            <div class="od-modal-empty-hint">No item requirements recorded.</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                     <div class="od-modal-footer">
                         <button class="od-modal-confirm-btn" @onclick="ApplyLevelModal">✓ Save & Apply Level</button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- SKILL UPGRADE & MASTERY MATERIALS MODAL -->
+        @if (showSkillUpgradeModal && op != null)
+        {
+            <div class="od-modal-backdrop" @onclick="() => showSkillUpgradeModal = false">
+                <div class="od-skill-modal-card" @onclick:stopPropagation="true">
+                    <!-- Modal Header -->
+                    <div class="od-modal-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="od-skill-modal-icon">🔺</span>
+                            <h3 class="od-modal-title">Skill Upgrade & Mastery Materials</h3>
+                        </div>
+                        <button class="od-modal-close-btn" @onclick="() => showSkillUpgradeModal = false">✕</button>
+                    </div>
+
+                    <!-- Skill Switcher Tabs (nếu operator có nhiều skill) -->
+                    @if (skills != null && skills.Count > 1)
+                    {
+                        <div class="od-skill-modal-tabs">
+                            @for (int s = 0; s < skills.Count; s++)
+                            {
+                                var sIdx = s;
+                                var sk = skills[sIdx];
+                                <button class="od-skill-modal-tab-btn @(selectedSkillUpgradeIndex == sIdx ? "active" : "")"
+                                        @onclick="() => selectedSkillUpgradeIndex = sIdx">
+                                    <img src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)" class="od-skill-modal-tab-icon" />
+                                    <span>Skill @(sIdx + 1)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    <div class="od-skill-modal-body">
+                        @{
+                            var targetSkill = (skills != null && selectedSkillUpgradeIndex < skills.Count) 
+                                ? skills[selectedSkillUpgradeIndex] 
+                                : CurrentSkill;
+                            var skillName = targetSkill?.Levels?.FirstOrDefault()?.Name ?? "Skill";
+                        }
+
+                        <div class="od-skill-modal-target-header">
+                            <img src="@GetSkillImageUrl(targetSkill?.IconId ?? targetSkill?.SkillId)" class="od-skill-modal-target-icon" />
+                            <div>
+                                <h4 class="od-skill-modal-target-title">@skillName</h4>
+                                <span class="od-skill-modal-target-type">Type: @(targetSkill?.SkillType ?? "AUTO")</span>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 1: Common Rank 1 -> 7 Upgrades -->
+                        <div class="od-skill-modal-section">
+                            <div class="od-skill-section-header">
+                                <span class="od-skill-section-badge">Common</span>
+                                <h4 class="od-skill-section-title">Rank 1 ➔ 7 Upgrades (All Skills)</h4>
+                            </div>
+
+                            @if (op.AllSkillLvlup != null && op.AllSkillLvlup.Count > 0)
+                            {
+                                <div class="od-skill-level-costs-list">
+                                    @for (int r = 0; r < op.AllSkillLvlup.Count; r++)
+                                    {
+                                        var rankCost = op.AllSkillLvlup[r];
+                                        var fromRank = r + 1;
+                                        var toRank = r + 2;
+
+                                        <div class="od-skill-cost-row">
+                                            <div class="od-skill-cost-rank-badge">
+                                                <span class="od-rank-text">Rank @fromRank ➔ @toRank</span>
+                                            </div>
+                                            <div class="od-skill-cost-items">
+                                                @if (rankCost.LvlUpCost != null && rankCost.LvlUpCost.Count > 0)
+                                                {
+                                                    @foreach (var it in rankCost.LvlUpCost)
+                                                    {
+                                                        <A9Tool.Components.Common.ItemBadge ItemId="@it.Id" Count="@it.Count" />
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="od-modal-empty-hint">Free</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="od-modal-empty-hint">No common rank upgrade costs recorded for this operator.</div>
+                            }
+                        </div>
+
+                        <!-- SECTION 2: Mastery 1 -> 3 Specialization for this specific skill -->
+                        <div class="od-skill-modal-section">
+                            <div class="od-skill-section-header">
+                                <span class="od-skill-section-badge mastery">Mastery</span>
+                                <h4 class="od-skill-section-title">Mastery Specialization (M1 ➔ M3)</h4>
+                            </div>
+
+                            @if (targetSkill?.LevelUpCostCond != null && targetSkill.LevelUpCostCond.Count > 0)
+                            {
+                                <div class="od-skill-level-costs-list">
+                                    @for (int m = 0; m < targetSkill.LevelUpCostCond.Count; m++)
+                                    {
+                                        var specCost = targetSkill.LevelUpCostCond[m];
+                                        var mLevel = m + 1;
+                                        var hours = specCost.LvlUpTime / 3600;
+
+                                        <div class="od-skill-cost-row mastery">
+                                            <div class="od-skill-cost-rank-badge mastery">
+                                                <span class="od-rank-text">Mastery @mLevel</span>
+                                                @if (hours > 0)
+                                                {
+                                                    <span class="od-training-time">⏱ @(hours)h</span>
+                                                }
+                                            </div>
+                                            <div class="od-skill-cost-items">
+                                                @if (specCost.LevelUpCost != null && specCost.LevelUpCost.Count > 0)
+                                                {
+                                                    @foreach (var it in specCost.LevelUpCost)
+                                                    {
+                                                        <A9Tool.Components.Common.ItemBadge ItemId="@it.Id" Count="@it.Count" />
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="od-modal-empty-hint">No materials required</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="od-modal-empty-hint">This skill has no mastery specialization tiers (max rank 7).</div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="od-modal-footer">
+                        <button class="od-modal-confirm-btn" @onclick="() => showSkillUpgradeModal = false">Close</button>
                     </div>
                 </div>
             </div>
@@ -971,15 +1214,31 @@ else
                                 </div>
                             </div>
 
-                            <!-- Materials Table (Commented placeholder for future implementation) -->
-                            <!--
-                            <div class="od-mod-materials-box">
-                                <div class="od-mod-box-header">Materials Required</div>
-                                <div class="od-mod-mat-stages">
-                                     Render material requirements list for STAGES 1, 2, 3 here...
+                            <!-- Materials Box (Module Stage 1, 2, 3) -->
+                            @if (CurrentModule != null && CurrentModule.ItemCost != null && CurrentModule.ItemCost.Count > 0)
+                            {
+                                <div class="od-mod-materials-box">
+                                    <div class="od-mod-box-header">Materials Required</div>
+                                    <div class="od-mod-mat-stages">
+                                        @for (int stage = 1; stage <= CurrentModule.ItemCost.Count; stage++)
+                                        {
+                                            var stageCosts = GetModuleStageCosts(CurrentModule, stage);
+                                            if (stageCosts.Count > 0)
+                                            {
+                                                <div class="od-mod-stage-cost-row">
+                                                    <span class="od-mod-stage-tag">STAGE @stage</span>
+                                                    <div class="od-mod-stage-items">
+                                                        @foreach (var bundle in stageCosts)
+                                                        {
+                                                            <A9Tool.Components.Common.ItemBadge ItemId="@bundle.Id" Count="@bundle.Count" />
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
                                 </div>
-                            </div>
-                            -->
+                            }
                         </div>
 
                     </div>
@@ -1020,6 +1279,44 @@ else
 
     private bool showLevelModal = false;
     private bool showModuleStatModal = false;
+    private bool showSkillUpgradeModal = false;
+    private int selectedSkillUpgradeIndex = 0;
+
+    private void OpenSkillUpgradeModal()
+    {
+        selectedSkillUpgradeIndex = selectedSkill;
+        showSkillUpgradeModal = true;
+    }
+
+    private int costFromLevel = 1;
+
+    private void OnCostFromLevelChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val))
+        {
+            costFromLevel = Math.Clamp(val, 1, currentLevel);
+        }
+    }
+
+    private LevelingCostResult GetLevelCostPreview()
+    {
+        int from = Math.Clamp(costFromLevel, 1, currentLevel);
+        return LevelService.CalculateLevelUpCost(elite, from, currentLevel);
+    }
+
+    private int GetPromotionLmdCostPreview()
+    {
+        return LevelService.GetPromotionLmdCost(op?.Rarity, elite);
+    }
+
+    private List<ItemBundle> GetPromotionMaterialsPreview()
+    {
+        if (op?.Phases != null && elite > 0 && elite < op.Phases.Count)
+        {
+            return op.Phases[elite].EvolveCost ?? [];
+        }
+        return [];
+    }
     private record struct SavedOperatorState(int Elite, int Level, int Trust, int ModuleIndex, int ModuleStage, DrawerState Drawer);
     private static readonly Dictionary<string, SavedOperatorState> _savedOperatorState = new();
 
@@ -1036,6 +1333,10 @@ else
         if (op?.Phases != null && elite < op.Phases.Count)
         {
             currentLevel = Math.Clamp(lvl, 1, op.Phases[elite].MaxLevel);
+            if (costFromLevel > currentLevel)
+            {
+                costFromLevel = currentLevel;
+            }
             SaveState();
         }
     }
@@ -1179,6 +1480,14 @@ else
     private SkillLevelResponse? CurrentSkillLevel => GetCurrentSkillLevel();
     private SkillsForOperatorResponse? CurrentSkill => (skills != null && selectedSkill < skills.Count) ? skills[selectedSkill] : null;
     private UniEquipData? CurrentModule => (selectedModuleIndex > 0 && modules != null && selectedModuleIndex <= modules.Count) ? modules[selectedModuleIndex - 1] : null;
+
+    private List<ItemBundle> GetModuleStageCosts(UniEquipData? module, int stage)
+    {
+        if (module?.ItemCost == null || module.ItemCost.Count == 0) return [];
+        var entry = module.ItemCost.FirstOrDefault(x => x.Stage == stage)
+                 ?? (stage > 0 && stage <= module.ItemCost.Count ? module.ItemCost[stage - 1] : null);
+        return entry?.Items ?? [];
+    }
 
     private string FormatSubProfession(string? subProfId)
     {

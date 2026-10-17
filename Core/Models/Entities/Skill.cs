@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+using Core.Enums;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Core.Models.Entities
@@ -10,6 +11,33 @@ namespace Core.Models.Entities
 
         [JsonPropertyName("unlockCond")]
         public UnlockCondition? UnlockCond { get; set; }
+
+        [JsonPropertyName("levelUpCostCond")]
+        [JsonConverter(typeof(FlexibleListConverter<SpecializeLevelData>))]
+        public List<SpecializeLevelData>? LevelUpCostCond { get; set; } = new();
+    }
+
+    public class SpecializeLevelData
+    {
+        [JsonPropertyName("unlockCond")]
+        public UnlockCondition? UnlockCond { get; set; }
+
+        [JsonPropertyName("lvlUpTime")]
+        public int LvlUpTime { get; set; }
+
+        [JsonPropertyName("levelUpCost")]
+        [JsonConverter(typeof(FlexibleListConverter<ItemBundle>))]
+        public List<ItemBundle>? LevelUpCost { get; set; } = new();
+    }
+
+    public class SkillLevelCost
+    {
+        [JsonPropertyName("unlockCond")]
+        public UnlockCondition? UnlockCond { get; set; }
+
+        [JsonPropertyName("lvlUpCost")]
+        [JsonConverter(typeof(FlexibleListConverter<ItemBundle>))]
+        public List<ItemBundle>? LvlUpCost { get; set; } = new();
     }
 
     public class SkillDetail
