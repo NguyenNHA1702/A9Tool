@@ -1,0 +1,566 @@
+@page "/calculator"
+@using Core.Models.Entities
+@inject Core.Services.CharacterService CharacterService
+@inject NavigationManager Navigation
+@inject ILogger<Calculator> Logger
+
+<div class="prts-calculator-page">
+    <!-- Header with Blueprint Motif -->
+    <div class="calc-header-bar">
+        <div>
+            <div class="calc-tag">// TACTICAL RESOURCE DIAGNOSTICS & LOGISTICS</div>
+            <h1 class="calc-title">PRTS PLANNER & CALCULATOR</h1>
+        </div>
+        <div class="calc-tab-switcher">
+            <button class="calc-tab-btn @(activeTab == "spark" ? "active" : "")" @onclick='() => activeTab = "spark"'>
+                <span class="tab-icon">◈</span> ORIGINIUM & PULL PLANNER
+            </button>
+            <button class="calc-tab-btn @(activeTab == "promo" ? "active" : "")" @onclick='() => activeTab = "promo"'>
+                <span class="tab-icon">⚙</span> OPERATOR UPGRADE CALCULATOR
+            </button>
+        </div>
+    </div>
+
+    @if (activeTab == "spark")
+    {
+        <!-- =========================================================
+             TAB 1: ORIGINIUM & GACHA SPARK PLANNER
+             ========================================================= -->
+        <div class="spark-planner-grid">
+            <!-- Left: Input Settings Panel -->
+            <div class="spark-panel spark-inputs-panel blueprint-motif">
+                <div class="panel-section-title">
+                    <span>01 // CURRENT INVENTORY & ASSETS</span>
+                    <span class="bp-coord">SEC.STASH</span>
+                </div>
+
+                <div class="input-row-grid">
+                    <div class="input-field-group">
+                        <label class="field-label">Orundum (Synthetic)</label>
+                        <div class="field-input-box">
+                            <span class="field-unit">✦</span>
+                            <input type="number" min="0" step="100" class="field-input" @bind="currentOrundum" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <div class="input-field-group">
+                        <label class="field-label">Originite Prime (OP)</label>
+                        <div class="field-input-box">
+                            <span class="field-unit">◇</span>
+                            <input type="number" min="0" step="1" class="field-input" @bind="currentOP" @bind:event="oninput" />
+                        </div>
+                        <span class="field-note">= @(currentOP * 180) Orundum</span>
+                    </div>
+
+                    <div class="input-field-group">
+                        <label class="field-label">Single Headhunt Permits</label>
+                        <div class="field-input-box">
+                            <span class="field-unit">🎟</span>
+                            <input type="number" min="0" step="1" class="field-input" @bind="singleTickets" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <div class="input-field-group">
+                        <label class="field-label">10x Headhunt Permits</label>
+                        <div class="field-input-box">
+                            <span class="field-unit">🎫</span>
+                            <input type="number" min="0" step="1" class="field-input" @bind="tenTickets" @bind:event="oninput" />
+                        </div>
+                        <span class="field-note">= @(tenTickets * 10) Pulls</span>
+                    </div>
+                </div>
+
+                <div class="panel-section-title mt-4">
+                    <span>02 // TARGET BANNER & TIMELINE</span>
+                    <span class="bp-coord">SEC.BANNER</span>
+                </div>
+
+                <div class="input-row-grid">
+                    <div class="input-field-group full-width">
+                        <label class="field-label">Target Banner Name</label>
+                        <input type="text" class="field-input-text" @bind="bannerName" />
+                    </div>
+
+                    <div class="input-field-group">
+                        <label class="field-label">Days Until Banner Starts</label>
+                        <div class="field-input-box">
+                            <input type="number" min="0" max="365" class="field-input" @bind="daysUntilBanner" @bind:event="oninput" />
+                            <span class="field-unit-right">Days</span>
+                        </div>
+                    </div>
+
+                    <div class="input-field-group">
+                        <label class="field-label">Banner Duration</label>
+                        <div class="field-input-box">
+                            <input type="number" min="1" max="60" class="field-input" @bind="bannerDurationDays" @bind:event="oninput" />
+                            <span class="field-unit-right">Days</span>
+                        </div>
+                    </div>
+
+                    <div class="input-field-group full-width">
+                        <label class="field-label">Target Pull Goal</label>
+                        <div class="goal-pill-group">
+                            <button class="goal-pill @(targetGoalPulls == 120 ? "active" : "")" @onclick="() => targetGoalPulls = 120">
+                                120 Pulls (Soft Pity)
+                            </button>
+                            <button class="goal-pill @(targetGoalPulls == 180 ? "active" : "")" @onclick="() => targetGoalPulls = 180">
+                                180 Pulls (Standard Spark)
+                            </button>
+                            <button class="goal-pill @(targetGoalPulls == 300 ? "active" : "")" @onclick="() => targetGoalPulls = 300">
+                                300 Pulls (Limited Spark)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section-title mt-4">
+                    <span>03 // RECURRING REVENUE STREAMS</span>
+                </div>
+
+                <div class="toggle-row">
+                    <label class="toggle-label">
+                        <input type="checkbox" @bind="hasMonthlyCard" />
+                        <span>Monthly Card Active (+200 Orundum/day, +6 OP/month)</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" @bind="includeAnnihilation" />
+                        <span>Full Weekly Annihilation (1,800 Orundum/week)</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" @bind="includeDailyMissions" />
+                        <span>Daily & Weekly Missions (1,200 Orundum/week)</span>
+                    </label>
+                </div>
+
+                <div class="bp-corner top-left">+</div>
+                <div class="bp-corner top-right">+</div>
+                <div class="bp-corner bottom-left">+</div>
+                <div class="bp-corner bottom-right">+</div>
+            </div>
+
+            <!-- Right: Results & Diagnostic Visualization Panel -->
+            <div class="spark-panel spark-results-panel blueprint-motif">
+                <div class="panel-section-title">
+                    <span>DIAGNOSTIC OUTCOME // GAURANTEE FORECAST</span>
+                    <span class="bp-coord">PRTS.EVAL</span>
+                </div>
+
+                <!-- Big Spark Percentage Ring -->
+                <div class="result-hero-box">
+                    <div class="result-percentage-display">
+                        <div class="result-pct-number">@CalculatedGoalPercent%</div>
+                        <div class="result-pct-label">OF @targetGoalPulls PULL SPARK GOAL</div>
+                        <div class="result-progress-bar">
+                            <div class="result-progress-fill" style="width: @Math.Min(100, CalculatedGoalPercent)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="result-status-tag @(CalculatedGoalPercent >= 100 ? "status-ready" : "status-pending")">
+                        @(CalculatedGoalPercent >= 100 ? "● SPARK TARGET SECURED" : $"▲ SHORTFALL: {Math.Max(0, targetGoalPulls - TotalProjectedPulls)} PULLS")
+                    </div>
+                </div>
+
+                <!-- Detailed Numeric Metrics Table -->
+                <div class="metrics-summary-table">
+                    <div class="metric-row">
+                        <span class="metric-name">Current Liquid Pulls</span>
+                        <span class="metric-val">@CurrentAvailablePulls Pulls</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-name">Projected Income During Wait (@(daysUntilBanner + bannerDurationDays) Days)</span>
+                        <span class="metric-val text-cyan">+@ProjectedIncomeOrundum Orundum (+@ProjectedIncomePulls Pulls)</span>
+                    </div>
+                    <div class="metric-row highlight">
+                        <span class="metric-name">Total Projected Pulls by Banner End</span>
+                        <span class="metric-val text-gold">@TotalProjectedPulls PULLS</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-name">Equivalent Originite Prime Stash</span>
+                        <span class="metric-val">@(TotalProjectedPulls * 600 / 180) OP Value</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-name">Target Banner Countdown</span>
+                        <span class="metric-val text-orange">@daysUntilBanner Days Until Launch</span>
+                    </div>
+                </div>
+
+                <!-- Tactical Advice Dossier -->
+                <div class="tactical-advice-box">
+                    <div class="advice-title">DOCTOR STRATEGIC BRIEFING //</div>
+                    <p class="advice-content">
+                        @if (CalculatedGoalPercent >= 100)
+                        {
+                            <span>Your Rhodes Island requisition fund is fully capitalized. You have guaranteed acquisition capability for <strong>@bannerName</strong> without relying on emergency OP top-ups.</span>
+                        }
+                        else
+                        {
+                            <span>At current accumulation rates, you will reach <strong>@TotalProjectedPulls / @targetGoalPulls</strong> pulls. To guarantee spark, consider clearing remaining Challenge Modes or Paradox Simulations for an extra <strong>@((targetGoalPulls - TotalProjectedPulls) * 600 / 180) OP</strong>.</span>
+                        }
+                    </p>
+                </div>
+
+                <div class="bp-corner top-left">+</div>
+                <div class="bp-corner top-right">+</div>
+                <div class="bp-corner bottom-left">+</div>
+                <div class="bp-corner bottom-right">+</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- =========================================================
+             TAB 2: OPERATOR UPGRADE RESOURCE CALCULATOR
+             ========================================================= -->
+        <div class="promo-planner-layout">
+            <!-- Operator Queue Section -->
+            <div class="promo-panel promo-queue-panel blueprint-motif">
+                <div class="panel-section-title">
+                    <span>PROMOTION MANIFEST // OPERATOR TARGETS</span>
+                    <button class="add-op-btn" @onclick="OpenAddOperatorModal">+ ADD OPERATOR</button>
+                </div>
+
+                @if (promotionQueue.Count == 0)
+                {
+                    <div class="empty-queue-hint">
+                        <div class="hint-icon">📋</div>
+                        <div class="hint-title">No Operators Queued for Promotion</div>
+                        <p class="hint-text">Click "+ ADD OPERATOR" to select operators from your roster and calculate required LMD, EXP, dualchips, and elite materials.</p>
+                        <button class="btn-primary-add" @onclick="OpenAddOperatorModal">Choose from 300+ Operators</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="operator-plan-cards">
+                        @foreach (var plan in promotionQueue)
+                        {
+                            <div class="plan-card">
+                                <div class="plan-card-header">
+                                    <img class="plan-avatar" src="@plan.AvatarUrl" alt="@plan.Name" />
+                                    <div>
+                                        <div class="plan-name">@plan.Name</div>
+                                        <div class="plan-class">@plan.Profession • @plan.Rarity★</div>
+                                    </div>
+                                    <button class="btn-remove-plan" @onclick="() => RemovePlan(plan)" title="Remove operator">✕</button>
+                                </div>
+
+                                <div class="plan-controls-grid">
+                                    <div class="plan-col">
+                                        <div class="col-title">CURRENT STATUS</div>
+                                        <div class="col-row">
+                                            <span>Elite:</span>
+                                            <select class="calc-select" @bind="plan.CurrentElite">
+                                                <option value="0">E0</option>
+                                                <option value="1">E1</option>
+                                                <option value="2">E2</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-row">
+                                            <span>Level:</span>
+                                            <input type="number" min="1" max="90" class="calc-input-sm" @bind="plan.CurrentLevel" />
+                                        </div>
+                                        <div class="col-row">
+                                            <span>Mastery:</span>
+                                            <select class="calc-select" @bind="plan.CurrentMastery">
+                                                <option value="0">M0</option>
+                                                <option value="1">M1</option>
+                                                <option value="2">M2</option>
+                                                <option value="3">M3</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="plan-divider-arrow">➔</div>
+
+                                    <div class="plan-col target">
+                                        <div class="col-title">TARGET GOAL</div>
+                                        <div class="col-row">
+                                            <span>Elite:</span>
+                                            <select class="calc-select" @bind="plan.TargetElite">
+                                                <option value="0">E0</option>
+                                                <option value="1">E1</option>
+                                                <option value="2">E2</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-row">
+                                            <span>Level:</span>
+                                            <input type="number" min="1" max="90" class="calc-input-sm" @bind="plan.TargetLevel" />
+                                        </div>
+                                        <div class="col-row">
+                                            <span>Mastery:</span>
+                                            <select class="calc-select" @bind="plan.TargetMastery">
+                                                <option value="0">M0</option>
+                                                <option value="1">M1</option>
+                                                <option value="2">M2</option>
+                                                <option value="3">M3</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="bp-corner top-left">+</div>
+                <div class="bp-corner top-right">+</div>
+                <div class="bp-corner bottom-left">+</div>
+                <div class="bp-corner bottom-right">+</div>
+            </div>
+
+            <!-- Aggregated Material Bill of Materials (BOM) Section -->
+            <div class="promo-panel promo-bom-panel blueprint-motif">
+                <div class="panel-section-title">
+                    <span>LOGISTICS REQUISITION // TOTAL MATERIAL REQUIREMENTS</span>
+                    <span class="bp-coord">DEPOT.REQ</span>
+                </div>
+
+                <div class="bom-stats-hero">
+                    <div class="bom-stat-box">
+                        <div class="bom-stat-label">TOTAL LMD REQUIRED</div>
+                        <div class="bom-stat-val text-gold">@TotalRequiredLMD.ToString("N0")</div>
+                    </div>
+                    <div class="bom-stat-box">
+                        <div class="bom-stat-label">TOTAL EXP REQUIRED</div>
+                        <div class="bom-stat-val text-cyan">@TotalRequiredEXP.ToString("N0")</div>
+                    </div>
+                </div>
+
+                <div class="materials-breakdown-list">
+                    <div class="mat-group-title">CORE PROMOTION MATERIALS & CHIPS</div>
+                    <div class="materials-chips-grid">
+                        <div class="mat-chip-item">
+                            <span class="mat-name">Dualchips / Class Chips</span>
+                            <span class="mat-qty">@TotalRequiredChips</span>
+                        </div>
+                        <div class="mat-chip-item">
+                            <span class="mat-name">Skill Summaries (Vol.3)</span>
+                            <span class="mat-qty">@TotalRequiredSkillBooks</span>
+                        </div>
+                        <div class="mat-chip-item">
+                            <span class="mat-name">Tier 5 Advanced Components</span>
+                            <span class="mat-qty">@(promotionQueue.Count * 6)</span>
+                        </div>
+                        <div class="mat-chip-item">
+                            <span class="mat-name">Tier 4 Elite Reagents</span>
+                            <span class="mat-qty">@(promotionQueue.Count * 14)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="depot-summary-note">
+                    <strong>SUPPLY CHAIN FORECAST:</strong> Promoting @promotionQueue.Count operator(s) requires approximately 
+                    <strong>@((TotalRequiredLMD / 7500) + (TotalRequiredEXP / 7500)) Sanity</strong> 
+                    of resource farming (~@(Math.Round((double)((TotalRequiredLMD / 7500) + (TotalRequiredEXP / 7500)) / 240, 1)) days of natural sanity).
+                </div>
+
+                <div class="bp-corner top-left">+</div>
+                <div class="bp-corner top-right">+</div>
+                <div class="bp-corner bottom-left">+</div>
+                <div class="bp-corner bottom-right">+</div>
+            </div>
+        </div>
+    }
+
+    <!-- Add Operator Modal -->
+    @if (showAddModal)
+    {
+        <div class="calc-modal-backdrop" @onclick="CloseAddOperatorModal">
+            <div class="calc-modal-card blueprint-motif" @onclick:stopPropagation="true">
+                <div class="modal-header-row">
+                    <div class="modal-title">CHOOSE OPERATOR FROM ROSTER</div>
+                    <button class="btn-close-modal" @onclick="CloseAddOperatorModal">✕</button>
+                </div>
+                <div class="modal-search-box">
+                    <input type="text" class="modal-search-input" placeholder="Search by operator name..." @bind="operatorSearchTerm" @bind:event="oninput" />
+                </div>
+                <div class="modal-operator-list">
+                    @foreach (var op in FilteredOperatorsList.Take(30))
+                    {
+                        var curOp = op;
+                        <div class="modal-op-row" @onclick="() => SelectOperatorToQueue(curOp)">
+                            <img class="modal-op-avatar" src="@($"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{curOp.Id?.ToLower()}_1.png")" alt="@curOp.Name" onerror="this.src='/assets/icons/characterdetail/back_round.png'" />
+                            <div class="modal-op-info">
+                                <div class="modal-op-name">@curOp.Name</div>
+                                <div class="modal-op-meta">@curOp.Profession • @curOp.Rarity?.Replace("TIER_", "")★</div>
+                            </div>
+                            <button class="modal-op-select-btn">+ ADD</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string activeTab = "spark";
+
+    // Tab 1: Spark Planner state
+    private int currentOrundum = 48600;
+    private int currentOP = 135;
+    private int singleTickets = 12;
+    private int tenTickets = 2;
+    private string bannerName = "Wis'adel // Limited Celebration";
+    private int daysUntilBanner = 14;
+    private int bannerDurationDays = 14;
+    private int targetGoalPulls = 300;
+    private bool hasMonthlyCard = true;
+    private bool includeAnnihilation = true;
+    private bool includeDailyMissions = true;
+
+    // Computed Pulls
+    private int CurrentAvailablePulls => (currentOrundum / 600) + (currentOP * 180 / 600) + singleTickets + (tenTickets * 10);
+
+    private int ProjectedIncomeOrundum
+    {
+        get
+        {
+            var totalDays = daysUntilBanner + bannerDurationDays;
+            int total = 0;
+            if (includeDailyMissions) total += totalDays * 100;
+            if (includeAnnihilation) total += (totalDays / 7) * 1800;
+            if (hasMonthlyCard) total += totalDays * 200;
+            return total;
+        }
+    }
+
+    private int ProjectedIncomePulls => (ProjectedIncomeOrundum / 600);
+
+    private int TotalProjectedPulls => CurrentAvailablePulls + ProjectedIncomePulls;
+
+    private int CalculatedGoalPercent => targetGoalPulls > 0 ? (int)Math.Round((double)TotalProjectedPulls / targetGoalPulls * 100) : 0;
+
+    // Tab 2: Promotion Planner state
+    private class OperatorPlan
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Profession { get; set; } = "";
+        public int Rarity { get; set; } = 6;
+        public string AvatarUrl { get; set; } = "";
+        public int CurrentElite { get; set; } = 0;
+        public int CurrentLevel { get; set; } = 1;
+        public int CurrentMastery { get; set; } = 0;
+        public int TargetElite { get; set; } = 2;
+        public int TargetLevel { get; set; } = 60;
+        public int TargetMastery { get; set; } = 3;
+    }
+
+    private List<OperatorPlan> promotionQueue = new();
+    private List<Character>? allOperators;
+    private bool showAddModal = false;
+    private string operatorSearchTerm = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            allOperators = await CharacterService.GetAllAsync();
+            // Default sample queue
+            promotionQueue.Add(new OperatorPlan
+            {
+                Id = "char_002_amiya",
+                Name = "Amiya",
+                Profession = "Caster",
+                Rarity = 5,
+                AvatarUrl = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/char_002_amiya_1.png",
+                CurrentElite = 1,
+                CurrentLevel = 50,
+                TargetElite = 2,
+                TargetLevel = 80,
+                TargetMastery = 3
+            });
+            promotionQueue.Add(new OperatorPlan
+            {
+                Id = "char_1028_texas2",
+                Name = "Texas the Omertosa",
+                Profession = "Specialist",
+                Rarity = 6,
+                AvatarUrl = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/char_1028_texas2_1.png",
+                CurrentElite = 0,
+                CurrentLevel = 1,
+                TargetElite = 2,
+                TargetLevel = 90,
+                TargetMastery = 3
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load operators for calculator.");
+        }
+    }
+
+    private IEnumerable<Character> FilteredOperatorsList => (allOperators ?? Enumerable.Empty<Character>())
+        .Where(o => string.IsNullOrEmpty(operatorSearchTerm) || o.Name.Contains(operatorSearchTerm, StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(o => o.Rarity);
+
+    private void OpenAddOperatorModal()
+    {
+        operatorSearchTerm = "";
+        showAddModal = true;
+    }
+
+    private void CloseAddOperatorModal()
+    {
+        showAddModal = false;
+    }
+
+    private void SelectOperatorToQueue(Character op)
+    {
+        var rNum = op.Rarity switch
+        {
+            "TIER_6" => 6,
+            "TIER_5" => 5,
+            "TIER_4" => 4,
+            "TIER_3" => 3,
+            _ => 6
+        };
+
+        promotionQueue.Add(new OperatorPlan
+        {
+            Id = op.Id ?? "",
+            Name = op.Name ?? "Operator",
+            Profession = op.Profession ?? "Guard",
+            Rarity = rNum,
+            AvatarUrl = $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{op.Id?.ToLower()}_1.png",
+            CurrentElite = 0,
+            CurrentLevel = 1,
+            CurrentMastery = 0,
+            TargetElite = 2,
+            TargetLevel = rNum == 6 ? 90 : 80,
+            TargetMastery = 3
+        });
+        showAddModal = false;
+    }
+
+    private void RemovePlan(OperatorPlan plan)
+    {
+        promotionQueue.Remove(plan);
+    }
+
+    // Material totals calculations
+    private int TotalRequiredLMD => promotionQueue.Sum(p =>
+    {
+        int lmd = 0;
+        if (p.TargetElite >= 1 && p.CurrentElite < 1) lmd += p.Rarity >= 5 ? 30000 : 15000;
+        if (p.TargetElite >= 2 && p.CurrentElite < 2) lmd += p.Rarity == 6 ? 180000 : 120000;
+        lmd += Math.Max(0, p.TargetLevel - p.CurrentLevel) * (p.Rarity >= 5 ? 4500 : 2500);
+        lmd += (p.TargetMastery - p.CurrentMastery) * 30000;
+        return lmd;
+    });
+
+    private int TotalRequiredEXP => promotionQueue.Sum(p =>
+    {
+        return Math.Max(0, p.TargetLevel - p.CurrentLevel) * (p.Rarity >= 5 ? 3800 : 2200);
+    });
+
+    private int TotalRequiredChips => promotionQueue.Sum(p =>
+    {
+        int chips = 0;
+        if (p.TargetElite >= 1 && p.CurrentElite < 1) chips += 5;
+        if (p.TargetElite >= 2 && p.CurrentElite < 2) chips += p.Rarity == 6 ? 4 : 3;
+        return chips;
+    });
+
+    private int TotalRequiredSkillBooks => promotionQueue.Sum(p => (p.TargetMastery - p.CurrentMastery) * 15);
+}

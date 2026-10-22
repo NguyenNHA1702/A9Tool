@@ -4,24 +4,27 @@
 @inject Core.Services.CharacterService service
 @inject NavigationManager Nav
 @inject ILogger<Operators> Logger
+@inject A9Tool.Services.LoadingStateService LoadingService
+@inject IJSRuntime JS
 
 @if (!string.IsNullOrEmpty(Id))
 {
     <OperatorDetail Id="@Id" OnBack="HandleBack" />
 }
 
-<div class="max-w-[1400px] mx-auto p-6" style="@(!string.IsNullOrEmpty(Id) ? "display: none;" : "")">
+<div class="prts-operators-page" style="@(!string.IsNullOrEmpty(Id) ? "display: none;" : "")">
 
-    @if (list is null)
-    {
-        <p><em>Loading...</em></p>
-    }
-    else
+    @if (list is not null)
     {
         <!-- --- Header & Cache Status --- -->
-        <div class="flex items-baseline gap-3 mb-6">
-            <h1 class="text-3xl font-bold">Arknights Operators</h1>
-            <span class="text-muted cursor-pointer" @onclick="ResetCache">@FilteredCharacters.Count() operators</span>
+        <div class="operators-tactical-header">
+            <div>
+                <div class="op-tactical-sub">// RHODES ISLAND PERSONNEL DATABASE</div>
+                <h1 class="op-tactical-title">OPERATOR ROSTER</h1>
+            </div>
+            <div class="op-count-badge cursor-pointer" @onclick="ResetCache">
+                TOTAL: <strong>@FilteredCharacters.Count()</strong> DEPLOYABLE
+            </div>
         </div>
 
         <!-- --- Filter & Search Controls --- -->
@@ -34,15 +37,23 @@
 
             <select class="filter-select" @bind="selectRarity">
                 <option value="">All Rarities</option>
-                <option value="TIER_6">6★</option>
-                <option value="TIER_5">5★</option>
-                <option value="TIER_4">4★</option>
-                <option value="TIER_3">3★</option>
-                <option value="TIER_2">2★</option>
-                <option value="TIER_1">1★</option>
+                <option value="TIER_6">6★ Amber</option>
+                <option value="TIER_5">5★ Gold</option>
+                <option value="TIER_4">4★ Purple</option>
+                <option value="TIER_3">3★ Blue</option>
+                <option value="TIER_2">2★ Green</option>
+                <option value="TIER_1">1★ Grey</option>
             </select>
 
-            <select class="filter-select" @bind="selectProfession">
+            <select class="filter-select" @bind="selectFaction">
+                <option value="">All Factions</option>
+                @foreach (var faction in AvailableFactions)
+                {
+                    <option value="@faction">@FormatNation(faction)</option>
+                }
+            </select>
+
+            <select class="filter-select" @bind="selectProfession" @bind:after="OnProfessionChanged">
                 <option value="">All Classes</option>
                 <option value="PIONEER">Vanguard</option>
                 <option value="WARRIOR">Guard</option>
@@ -53,35 +64,77 @@
                 <option value="SUPPORT">Supporter</option>
                 <option value="SPECIAL">Specialist</option>
             </select>
+
+            <select class="filter-select" @bind="selectSubProfession">
+                <option value="">All Sub-Professions</option>
+                @foreach (var sub in AvailableSubProfessions)
+                {
+                    <option value="@sub">@FormatSubProfession(sub)</option>
+                }
+            </select>
         </div>
 
-        <!-- --- Operator Cards Grid --- -->
-        <div class="operator-grid">
+        <!-- --- Operator Cards Grid (1:2.4 Tall Card • 45° Chamfered Cut) --- -->
+        <div class="roster-grid-layout">
             @foreach (var op in FilteredCharacters)
             {
                 var id = op.Id?.ToLower() ?? "";
-                <div class="op-card" data-rarity="@op.Rarity" @key="op.Id" @onclick="() => NavigateToDetail(op.Id)">
-                    <!-- Main Character Portrait -->
-                    <A9Tool.Components.Common.LazyImage Class="op-card-img"
-                                                        Src="@($"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{id}_1.png")"
-                                                        FallbackSrc="@($"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{id}.png")"
-                                                        Category="avatars"
-                                                        Alt="@op.Name" />
+                var rNum = GetRarityNumber(op.Rarity);
+                <div class="ark-card-tall star-@rNum" data-rarity="@op.Rarity" @key="op.Id" @onclick="() => NavigateToDetail(op.Id)">
+                    <div class="ark-card-inner">
+                        <!-- Top Overlay: Class Tag & Rarity Stars -->
+                        <div class="card-head-overlay">
+                            <div class="card-class-tag">
+                                <img class="op-class-icon-mini" src="@GetClassIconUrl(op.Profession)" alt="@op.Profession" />
+                                <span>@FormatProfession(op.Profession).ToUpper()</span>
+                            </div>
+                            <div class="card-star-icons star-@rNum">
+                                @FormatStars(op.Rarity)
+                            </div>
+                        </div>
 
-                    <!-- Top Overlay Badge: Class Icon & Rarity Stars -->
-                    <div class="op-card-top-badge rarity-badge-@(op.Rarity)">
-                        <img class="op-class-icon" src="@GetClassIconUrl(op.Profession)" alt="@op.Profession" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
-                        <span class="op-stars-text">@FormatRarity(op.Rarity)</span>
-                    </div>
+                        <!-- Main Character Portrait Full -->
+                        <A9Tool.Components.Common.LazyImage Class="card-portrait-full"
+                                                            Src="@($"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/charportraits/{id}_1.png")"
+                                                            FallbackSrc="@($"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/characters/{id}.png")"
+                                                            Category="avatars"
+                                                            Alt="@op.Name" />
 
-                    <!-- Bottom Overlay Banner: Operator Name & Class -->
-                    <div class="op-card-bottom-banner">
-                        <div class="op-card-name">@op.Name</div>
-                        <div class="op-card-class-sub">@FormatProfession(op.Profession)</div>
+                        <!-- Faint Faction Watermark Logo (Chìm Trong Card) -->
+                        @if (!string.IsNullOrEmpty(op.NationId))
+                        {
+                            <img class="op-card-faction-watermark"
+                                 src="@GetFactionLogoUrl(op.NationId)"
+                                 alt="Faction"
+                                 loading="lazy"
+                                 onerror="this.style.display='none';" />
+                        }
+
+                        <!-- Bottom Overlay: Operator Name, Faction & Sub-Profession -->
+                        <div class="card-foot-overlay">
+                            <div class="card-name-title">@op.Name</div>
+                            <div class="card-sub-info">
+                                <span class="card-faction-tag">@(string.IsNullOrEmpty(op.NationId) ? "RHODES ISLAND" : FormatNation(op.NationId).ToUpper())</span>
+                                <span class="card-subprof-tag">@(string.IsNullOrEmpty(op.SubProfessionId) ? FormatProfession(op.Profession) : FormatSubProfession(op.SubProfessionId))</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             }
         </div>
+
+        <!-- Floating Tactical Fast-Scroll Rail (Vuốt / Jump Rarity Cực Nhanh) -->
+        <aside class="roster-fast-rail" title="Tactical Fast Scroll & Rarity Jump">
+            <button class="rail-btn rail-top" @onclick="ScrollToTop" title="Scroll to Top">▲</button>
+            <button class="rail-btn star-6 @(selectRarity == "TIER_6" ? "active" : "")" @onclick='() => QuickFilterRarity("TIER_6")' title="6★ Operators">6★</button>
+            <button class="rail-btn star-5 @(selectRarity == "TIER_5" ? "active" : "")" @onclick='() => QuickFilterRarity("TIER_5")' title="5★ Operators">5★</button>
+            <button class="rail-btn star-4 @(selectRarity == "TIER_4" ? "active" : "")" @onclick='() => QuickFilterRarity("TIER_4")' title="4★ Operators">4★</button>
+            <button class="rail-btn star-3 @(selectRarity == "TIER_3" ? "active" : "")" @onclick='() => QuickFilterRarity("TIER_3")' title="3★ Operators">3★</button>
+            <button class="rail-btn star-2 @(selectRarity == "TIER_2" ? "active" : "")" @onclick='() => QuickFilterRarity("TIER_2")' title="2★ Operators">2★</button>
+            <button class="rail-btn star-1 @(selectRarity == "TIER_1" ? "active" : "")" @onclick='() => QuickFilterRarity("TIER_1")' title="1★ Operators">1★</button>
+            <button class="rail-btn rail-all @(string.IsNullOrEmpty(selectRarity) ? "active" : "")" @onclick='() => QuickFilterRarity("")' title="All Rarities">ALL</button>
+            <button class="rail-btn rail-bot" @onclick="ScrollToBottom" title="Scroll to Bottom">▼</button>
+        </aside>
     }
 </div>
 
@@ -89,7 +142,9 @@
     private List<Character>? list;
     private string searchTerm = "";
     private string selectRarity = "";
+    private string selectFaction = "";
     private string selectProfession = "";
+    private string selectSubProfession = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -97,17 +152,57 @@
         Logger.LogInformation("{Header}", PipelineLogger.FormatHeader("CATALOG PIPELINE", "Operator Catalog", "All Operators"));
         Logger.LogInformation("{Step}", PipelineLogger.FormatStep(50, PipelineLogger.TagDiskHit("operators.json"), "Disk Cache Read", "Fetching operators from repository cache..."));
 
-        list = await service.GetAllAsync();
-        sw.Stop();
+        try
+        {
+            LoadingService.Show("RHODES ISLAND OPERATOR ROSTER", "PARSING OPERATOR REGISTRY & COMBAT MANIFEST...", 45);
+            list = await service.GetAllAsync();
+            LoadingService.UpdateProgress(95, "// DECRYPTING STATS & SKILL REPOSITORY... [OK]");
+            await Task.Delay(80);
+        }
+        finally
+        {
+            LoadingService.Hide();
+        }
 
+        sw.Stop();
         Logger.LogInformation("{Step}", PipelineLogger.FormatStep(100, PipelineLogger.TagRamHit(), "Catalog Ready", $"{list?.Count ?? 0} operators loaded", sw.ElapsedMilliseconds));
         Logger.LogInformation("{Footer}", PipelineLogger.FormatFooter("Operator Catalog", sw.ElapsedMilliseconds));
     }
 
+    private IEnumerable<string> AvailableFactions => list?
+        .Where(c => !string.IsNullOrEmpty(c.NationId))
+        .Select(c => c.NationId!)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(n => FormatNation(n))
+        ?? Enumerable.Empty<string>();
+
+    private IEnumerable<string> AvailableSubProfessions => list?
+        .Where(c => (string.IsNullOrEmpty(selectProfession) || c.Profession == selectProfession)
+                 && !string.IsNullOrEmpty(c.SubProfessionId))
+        .Select(c => c.SubProfessionId!)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(s => FormatSubProfession(s))
+        ?? Enumerable.Empty<string>();
+
+    private void OnProfessionChanged()
+    {
+        if (!string.IsNullOrEmpty(selectSubProfession))
+        {
+            var exists = AvailableSubProfessions.Contains(selectSubProfession, StringComparer.OrdinalIgnoreCase);
+            if (!exists)
+            {
+                selectSubProfession = "";
+            }
+        }
+    }
+
     private IEnumerable<Character> FilteredCharacters => list?
+        .Where(c => !string.IsNullOrWhiteSpace(c.Name) && c.Name != "???" && !c.Name.StartsWith("???"))
         .Where(c => string.IsNullOrEmpty(searchTerm) || (c.Name != null && c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
         .Where(c => string.IsNullOrEmpty(selectRarity) || c.Rarity == selectRarity)
+        .Where(c => string.IsNullOrEmpty(selectFaction) || string.Equals(c.NationId, selectFaction, StringComparison.OrdinalIgnoreCase))
         .Where(c => string.IsNullOrEmpty(selectProfession) || c.Profession == selectProfession)
+        .Where(c => string.IsNullOrEmpty(selectSubProfession) || string.Equals(c.SubProfessionId, selectSubProfession, StringComparison.OrdinalIgnoreCase))
         ?? Enumerable.Empty<Character>();
 
     [Parameter] public string? Id { get; set; }
@@ -123,8 +218,34 @@
         Nav.NavigateTo("/operators");
     }
 
-    private string FormatRarity(string? r)
-        => string.IsNullOrEmpty(r) ? "" : r.Replace("TIER_", "") + "★";
+    private string FormatStars(string? r) => r switch
+    {
+        "TIER_6" => "★★★★★★",
+        "TIER_5" => "★★★★★",
+        "TIER_4" => "★★★★",
+        "TIER_3" => "★★★",
+        "TIER_2" => "★★",
+        "TIER_1" => "★",
+        _ => ""
+    };
+
+    private int GetRarityNumber(string? r) => r switch
+    {
+        "TIER_6" => 6,
+        "TIER_5" => 5,
+        "TIER_4" => 4,
+        "TIER_3" => 3,
+        "TIER_2" => 2,
+        "TIER_1" => 1,
+        _ => 1
+    };
+
+    private string FormatSubProfession(string? subProfId)
+    {
+        if (string.IsNullOrEmpty(subProfId)) return "";
+        var clean = subProfId.Replace("_", " ");
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(clean);
+    }
 
     private string FormatProfession(string? p) => p switch
     {
@@ -149,10 +270,72 @@
         "MEDIC" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_medic.png",
         "SUPPORT" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_supporter.png",
         "SPECIAL" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_specialist.png",
-        _ => "/assets/icons/characterdetail/back_round.png"
+        _ => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_caster.png"
     };
 
     private async Task ResetCache()
        => await service.ResetCache();
-    
-}
+
+    private string FormatNation(string? n) => n?.ToLower() switch
+    {
+        "rhodes" => "Rhodes Island",
+        "victoria" => "Victoria",
+        "yan" => "Yan",
+        "columbia" => "Columbia",
+        "kazimierz" => "Kazimierz",
+        "ursus" => "Ursus",
+        "kjerag" => "Kjerag",
+        "sami" => "Sami",
+        "iberia" => "Iberia",
+        "laterano" => "Laterano",
+        "siracusa" => "Siracusa",
+        "higashi" => "Higashi",
+        "minos" => "Minos",
+        "rim" => "Rim Billiton",
+        "abyssal" => "Abyssal",
+        "siesta" => "Siesta",
+        "bolivar" => "Bolívar",
+        "leithanien" => "Leithanien",
+        "sargon" => "Sargon",
+        "lungmen" => "Lungmen",
+        "babel" => "Babel",
+        "kazdel" => "Kazdel",
+        _ => string.IsNullOrEmpty(n) ? "" : char.ToUpper(n[0]) + n.Substring(1)
+    };
+
+    private string GetFactionLogoUrl(string? n)
+    {
+        var nid = string.IsNullOrEmpty(n) ? "rhodes" : n.ToLower();
+        return $"https://raw.githubusercontent.com/Aceship/Arknight-Images/main/factions/logo_{nid}.png";
+    }
+
+    private void QuickFilterRarity(string rarity)
+    {
+        if (selectRarity == rarity)
+        {
+            selectRarity = "";
+        }
+        else
+        {
+            selectRarity = rarity;
+        }
+    }
+
+    private async Task ScrollToTop()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+        }
+        catch { }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "document.querySelector('.page-content')?.scrollTo({top: 999999, behavior: 'smooth'})");
+        }
+        catch { }
+    }
+}

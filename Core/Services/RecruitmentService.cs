@@ -38,6 +38,11 @@ namespace Core.Services
         public double Star4Rate => OperatorCount > 0 ? Math.Round((double)Star4Count / OperatorCount * 100, 1) : 0;
 
         /// <summary>
+        /// Average operator rarity in this combination.
+        /// </summary>
+        public double AverageRarity => OperatorCount > 0 ? Math.Round(MatchedOperators.Average(o => GetTier(o.Rarity)), 2) : 0;
+
+        /// <summary>
         /// Tỉ lệ % cơ hội trúng một tướng cụ thể trong pool nếu combo là Guaranteed.
         /// </summary>
         public double TargetChance => (IsGuaranteed4Plus || Has6Star) && OperatorCount > 0

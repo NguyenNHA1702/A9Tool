@@ -44,7 +44,10 @@ namespace Core.Services
                 throw new Exception("Failed to retrieve character data.");
             }
 
-            var list = charactersData.Values.ToList();
+            var list = charactersData.Values
+                .Where(c => !string.IsNullOrWhiteSpace(c.Name) && c.Name != "???" && !c.Name.StartsWith("???"))
+                .ToList();
+
             _logger.LogInformation("[GetAllAsync] Loaded {Count} Characters from CharactersAsync.", list.Count);
             return list;
         }
@@ -299,12 +302,32 @@ namespace Core.Services
         }
 
         /// <summary>
-        /// Removes HTML/XML style markup tags from raw description strings.
+        /// Cleans and formats operator descriptions, parsing dynamic tokens like {1.6:0%}, {-0.2:0%}, stripping HTML tags.
         /// </summary>
-        private static string? CleanDescription(string? description)
+        public static string? CleanDescription(string? description)
         {
             if (string.IsNullOrEmpty(description)) return description;
-            return Regex.Replace(description, @"<[^>]+>", "");
+
+            // 1. Format percentage placeholders like {1.6:0%} -> 160% or {-0.2:0%} -> -20%
+            description = Regex.Replace(description, @"\{(-?\d+(?:\.\d+)?):0(?:\.0+)?%\}", m =>
+            {
+                if (double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double val))
+                {
+                    return $"{(val * 100):0.#}%";
+                }
+                return m.Value;
+            });
+
+            // 2. Format numeric template tokens {number:format}
+            description = Regex.Replace(description, @"\{(-?\d+(?:\.\d+)?)(?::[^{}]+)?\}", m => m.Groups[1].Value);
+
+            // 3. Strip remaining raw placeholder braces like {-0.2%} or {atk_scale}
+            description = Regex.Replace(description, @"\{[-+]?([a-zA-Z0-9_.]+)(?::[^{}]+)?\}", "$1");
+
+            // 4. Strip rich-text markup tags: <@ba.kw>...</>, <color=...>
+            description = Regex.Replace(description, @"<[^>]+>", "");
+
+            return description.Trim();
         }
 
         /// <summary>

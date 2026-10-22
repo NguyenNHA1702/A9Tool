@@ -1,5 +1,330 @@
-﻿@page "/"
+@page "/"
+@using System.Text.Json
+@using Core.Models.Entities
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-<h1>Hello, world!</h1>
+<div class="prts-home-viewport">
+    <!-- Cinematic Arknights Background with Dark Blueprint Vignette -->
+    <div class="home-bg-layer" style="background-image: url('@currentBackgroundUrl');"></div>
+    <div class="home-blueprint-grid-overlay"></div>
+    <div class="home-vignette-overlay"></div>
 
-Welcome to your new app.
+    <!-- Doctor Command Center Layout (Arknights Authentic Operations Deck) -->
+    <div class="home-stage-container">
+        
+        <!-- Left / Center: Standing Assistant Operator -->
+        <div class="assistant-operator-stage">
+            <div class="assistant-art-wrapper">
+                <img class="assistant-portrait"
+                     src="@currentAssistant.ArtUrl"
+                     alt="@currentAssistant.Name"
+                     @onerror="OnAssistantArtError" />
+                
+                <!-- Faint Faction Watermark Behind Character -->
+                <div class="assistant-faction-watermark">@currentAssistant.Faction</div>
+            </div>
+
+            <!-- Assistant Dialogue & Badge -->
+            <div class="assistant-dossier-card">
+                <div class="assistant-meta-row">
+                    <span class="assistant-tag">ASSISTANT OPERATOR</span>
+                    <span class="assistant-trust">TRUST 200%</span>
+                    <button class="assistant-shuffle-btn" @onclick="ShuffleAssistant" title="Switch Assistant Operator">
+                        SWITCH ⟳
+                    </button>
+                </div>
+                <div class="assistant-name-title">@currentAssistant.Name</div>
+                <div class="assistant-class-faction">@currentAssistant.Class.ToUpper() • @currentAssistant.Faction.ToUpper()</div>
+                <div class="assistant-dialogue-bubble">
+                    <span class="quote-mark">“</span>
+                    @currentAssistant.Quote
+                    <span class="quote-mark">”</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Tactical Control Dashboard -->
+        <div class="home-control-deck">
+            
+            <!-- Top Row: Originium & Pulls Target Card + Terminal Card (Replaced Sanity as requested) -->
+            <div class="deck-top-row">
+                <!-- Originium & Pull Target Card (Clickable -> /calculator) -->
+                <div class="originium-status-card blueprint-motif" @onclick='() => NavigateTo("/calculator")' title="Click to open PRTS Planner & Calculator">
+                    <div class="originium-top-row">
+                        <span class="spark-target-pill">NEXT LIMITED BANNER: WIS'ADEL</span>
+                        <span class="spark-days-left">14 DAYS</span>
+                    </div>
+                    <div class="originium-val-row">
+                        <div class="originium-left">
+                            <div class="spark-pct-num">82% <span class="spark-pct-sub">SPARK GOAL</span></div>
+                            <div class="spark-stats-breakdown">48,600 Orundum • 135 OP (~148 Pulls)</div>
+                        </div>
+                        <div class="originium-right-icon">
+                            <span class="op-gem-icon">◈</span>
+                            <span class="calc-jump-arrow">PLANNER ▶</span>
+                        </div>
+                    </div>
+                    <div class="spark-mini-progress">
+                        <div class="spark-mini-fill" style="width: 82%;"></div>
+                    </div>
+                    <div class="bp-corner top-left">+</div>
+                    <div class="bp-corner top-right">+</div>
+                    <div class="bp-corner bottom-left">+</div>
+                    <div class="bp-corner bottom-right">+</div>
+                </div>
+
+                <!-- Terminal Mission Card (Clickable -> Story) -->
+                <div class="terminal-banner-card blueprint-motif" @onclick='() => NavigateTo("/story")' title="Truy cập PRTS Terminal & Biên niên sử">
+                    <div class="terminal-card-header">
+                        <span class="term-status-pill @(activeStoryTarget != null ? "status-reading" : "")">
+                            @(activeStoryTarget != null ? "TRANSMISSION // ĐANG ĐỌC" : "CURRENT OPERATION")
+                        </span>
+                        <span class="term-loc">@(activeStoryTarget != null ? activeStoryTarget.Title.ToUpper() : "15-1 THE END OF PAST")</span>
+                    </div>
+                    <div class="terminal-card-body">
+                        <div>
+                            <div class="term-title">TERMINAL</div>
+                            @if (activeStoryTarget != null)
+                            {
+                                var pct = activeStoryTarget.TotalLines > 0 ? (int)((double)activeStoryTarget.LineIndex / activeStoryTarget.TotalLines * 100) : 0;
+                                <div class="term-subtitle term-bookmark-progress">
+                                    <div class="bm-prog-line">
+                                        <span class="bm-prog-badge">TIẾN ĐỘ: LINE @(activeStoryTarget.LineIndex + 1)/@activeStoryTarget.TotalLines (@(pct)%)</span>
+                                        <span class="bm-res-hint">ĐỌC TIẾP ▶</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(activeStoryTarget.LineExcerpt))
+                                    {
+                                        <div class="bm-quote-preview">“@activeStoryTarget.LineExcerpt”</div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="term-subtitle">CRITICAL PHASE TRANSITION // CANONICAL STORY HUB</div>
+                            }
+                        </div>
+                        <div class="term-arrow-reticle">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/>
+                                <polygon points="10 8 16 12 10 16" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <!-- Blueprint crosshairs -->
+                    <div class="bp-corner top-left">+</div>
+                    <div class="bp-corner top-right">+</div>
+                    <div class="bp-corner bottom-left">+</div>
+                    <div class="bp-corner bottom-right">+</div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Hub Tiles with Blueprint Motif (Screenshot 3 Style) -->
+            <div class="deck-action-grid">
+                
+                <!-- 1. Operator Management (Prominent Industrial Tile) -->
+                <div class="action-card-tile card-operator-management blueprint-motif" @onclick='() => NavigateTo("/operators")'>
+                    <div class="bp-watermark-rook">
+                        <svg viewBox="0 0 24 24" width="90" height="90" fill="currentColor">
+                            <path d="M5 20h14v-2H5v2zm1-3h12l-1-7h-2v2h-2v-2h-2v2H9v-2H7l-1 7zm1-9h10V5h-2v2h-2V5h-2v2H9V5H7v3z"/>
+                        </svg>
+                    </div>
+                    <div class="card-tile-top">
+                        <span class="tile-code-tag">SEC.02 // PRTS_ROSTER</span>
+                        <span class="tile-indicator-bar"></span>
+                    </div>
+                    <div class="card-tile-content">
+                        <div class="tile-title-main">OPERATOR</div>
+                        <div class="tile-sub-title">MANAGEMENT & COMBAT ROSTER</div>
+                    </div>
+                    <div class="card-tile-footer">
+                        <span class="tile-desc-hint">Inspect 300+ Operators • Skills • Modules</span>
+                        <span class="tile-action-arrow">ENTER ▶</span>
+                    </div>
+                    <div class="bp-corner top-left">+</div>
+                    <div class="bp-corner top-right">+</div>
+                    <div class="bp-corner bottom-left">+</div>
+                    <div class="bp-corner bottom-right">+</div>
+                </div>
+
+                <!-- 2. HR Recruitment (Vibrant Cyan Arknights Tab Motif) -->
+                <div class="action-card-tile card-recruitment blueprint-motif" @onclick='() => NavigateTo("/recruitment")'>
+                    <div class="card-tile-top">
+                        <span class="tile-code-tag">HR.03 // HEADHUNT</span>
+                        <span class="tile-cyan-badge">CALCULATOR</span>
+                    </div>
+                    <div class="card-tile-content">
+                        <div class="tile-title-main">RECRUITMENT</div>
+                        <div class="tile-sub-title">TAG COMBINATIONS & RARITY PROBABILITIES</div>
+                    </div>
+                    <div class="card-tile-footer">
+                        <span class="tile-desc-hint">Top Operator • Senior • Guaranteed 4★/5★/6★</span>
+                        <span class="tile-action-arrow">CALCULATE ▶</span>
+                    </div>
+                    <div class="bp-corner top-left">+</div>
+                    <div class="bp-corner top-right">+</div>
+                    <div class="bp-corner bottom-left">+</div>
+                    <div class="bp-corner bottom-right">+</div>
+                </div>
+
+                <!-- 3. Story Archives & Chronicles -->
+                <div class="action-card-tile card-archives blueprint-motif" @onclick='() => NavigateTo("/story")'>
+                    <div class="card-tile-top">
+                        <span class="tile-code-tag">ARC.04 // CHRONICLES</span>
+                    </div>
+                    <div class="card-tile-content">
+                        <div class="tile-title-main">ARCHIVES</div>
+                        <div class="tile-sub-title">CANONICAL STORY TIMELINE & FACTION LOGS</div>
+                    </div>
+                    <div class="card-tile-footer">
+                        <span class="tile-desc-hint">Main Theme • Intermezzi • Side Stories</span>
+                        <span class="tile-action-arrow">VIEW LOGS ▶</span>
+                    </div>
+                    <div class="bp-corner top-left">+</div>
+                    <div class="bp-corner top-right">+</div>
+                    <div class="bp-corner bottom-left">+</div>
+                    <div class="bp-corner bottom-right">+</div>
+                </div>
+
+                <!-- 4. Tactical Calculator & Upgrade Planner (Replaces plain settings tile) -->
+                <div class="action-card-tile card-calculator blueprint-motif" @onclick='() => NavigateTo("/calculator")'>
+                    <div class="card-tile-top">
+                        <span class="tile-code-tag">CALC.05 // LOGISTICS</span>
+                        <span class="tile-gold-badge">PLANNER</span>
+                    </div>
+                    <div class="card-tile-content">
+                        <div class="tile-title-main">CALCULATOR</div>
+                        <div class="tile-sub-title">UPGRADE RESOURCES & ORIGINIUM SPARK</div>
+                    </div>
+                    <div class="card-tile-footer">
+                        <span class="tile-desc-hint">LMD, EXP, Chips & Pull Accumulation Tracker</span>
+                        <span class="tile-action-arrow">OPEN ▶</span>
+                    </div>
+                    <div class="bp-corner top-left">+</div>
+                    <div class="bp-corner top-right">+</div>
+                    <div class="bp-corner bottom-left">+</div>
+                    <div class="bp-corner bottom-right">+</div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Tactical Ticker Bar -->
+            <div class="home-footer-ticker">
+                <span class="ticker-dot"></span>
+                <span class="ticker-text">RHODES ISLAND PHARMACEUTICAL TACTICAL KERNEL // SYSTEM OPERATIONAL // TERRA SOLARIS 1099</span>
+                <button class="bg-switch-btn" @onclick="SwitchBackground" title="Switch Background Atmosphere">
+                    CHANGE ATMOSPHERE ▤
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private record AssistantOperator(string Name, string Class, string Faction, string Quote, string ArtUrl);
+
+    private readonly List<AssistantOperator> assistants = new()
+    {
+        new("Amiya", "Caster", "Rhodes Island", "Doctor, welcome back. Even the longest night will eventually give way to dawn. Let's make today count.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_002_amiya/char_002_amiya_1%2B.png"),
+        new("Kal'tsit", "Medic", "Rhodes Island", "Do not allow trivialities to cloud your judgment, Doctor. The path we tread permits no hesitation.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_003_kalts/char_003_kalts_2.png"),
+        new("Texas the Omertosa", "Specialist", "Siracusa", "Contract acknowledged. Rain or blood, when the wolves howl, I will be the first blade.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_1028_texas2/char_1028_texas2_2.png"),
+        new("SilverAsh", "Guard", "Kjerag", "A strategic partnership requires mutual vision, Doctor. Let us see how far our ambitions reach.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_172_svrash/char_172_svrash_2.png"),
+        new("Ch'en the Holungday", "Sniper", "Lungmen", "Catch your breath, Doctor. The water guns may be recreational, but my aim never falters.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_1013_chen2/char_1013_chen2_2.png"),
+        new("Mudrock", "Defender", "Kazdel", "The earth whispers beneath our boots. As long as this armor holds, no harm shall come to you, Doctor.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_311_mudrok/char_311_mudrok_2.png"),
+        new("Muelsyse", "Vanguard", "Rhine Lab", "Water remembers everything, Doctor. Let me create an oasis for you amidst this relentless storm.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_249_mlyse/char_249_mlyse_2.png"),
+        new("Degenbrecher", "Guard", "Kjerag", "Keep your orders concise. When I draw my blade, only the result matters.", "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_4116_blkkg/char_4116_blkkg_2.png")
+    };
+
+    private readonly List<string> backgroundUrls = new()
+    {
+        "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avg/backgrounds/bg_bridge_1.png",
+        "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avg/backgrounds/bg_control_1.png",
+        "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avg/backgrounds/bg_rhodes_1.png",
+        "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avg/backgrounds/bg_building_1.png",
+        "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avg/backgrounds/bg_lungmen_1.png",
+        "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/avg/backgrounds/bg_blackturb_1.png"
+    };
+
+    private AssistantOperator currentAssistant = null!;
+    private string currentBackgroundUrl = "";
+    private int currentAssistantIdx = 0;
+    private int currentBgIdx = 0;
+    private StoryBookmark? activeStoryTarget;
+
+    protected override void OnInitialized()
+    {
+        // Pick a random assistant & background on initial load
+        var rand = new Random();
+        currentAssistantIdx = rand.Next(assistants.Count);
+        currentAssistant = assistants[currentAssistantIdx];
+
+        currentBgIdx = rand.Next(backgroundUrls.Count);
+        currentBackgroundUrl = backgroundUrls[currentBgIdx];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadStoryTargetAsync();
+        }
+    }
+
+    private async Task LoadStoryTargetAsync()
+    {
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // 1. Try active reading session first
+            var activeJson = await JS.InvokeAsync<string>("localStorage.getItem", "a9_current_reading");
+            if (!string.IsNullOrEmpty(activeJson))
+            {
+                activeStoryTarget = JsonSerializer.Deserialize<StoryBookmark>(activeJson, options);
+            }
+
+            // 2. Fallback to latest saved bookmark
+            if (activeStoryTarget == null)
+            {
+                var bmJson = await JS.InvokeAsync<string>("localStorage.getItem", "a9_story_bookmarks");
+                if (!string.IsNullOrEmpty(bmJson))
+                {
+                    var list = JsonSerializer.Deserialize<List<StoryBookmark>>(bmJson, options);
+                    activeStoryTarget = list?.Where(b => b != null).OrderByDescending(b => b.SavedAt).FirstOrDefault();
+                }
+            }
+        }
+        catch { }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void ShuffleAssistant()
+    {
+        currentAssistantIdx = (currentAssistantIdx + 1) % assistants.Count;
+        currentAssistant = assistants[currentAssistantIdx];
+    }
+
+    private void SwitchBackground()
+    {
+        currentBgIdx = (currentBgIdx + 1) % backgroundUrls.Count;
+        currentBackgroundUrl = backgroundUrls[currentBgIdx];
+    }
+
+    private void OnAssistantArtError()
+    {
+        // Fallback to Amiya E0 art if custom high-res art fails
+        currentAssistant = currentAssistant with
+        {
+            ArtUrl = "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/characters/char_002_amiya/char_002_amiya_1.png"
+        };
+    }
+
+    private void NavigateTo(string path)
+    {
+        Navigation.NavigateTo(path);
+    }
+}

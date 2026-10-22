@@ -173,11 +173,12 @@
 
                     <!-- Sort Mode Select -->
                     <select class="rec-sort-select" @bind="sortMode">
-                        <option value="DEFAULT">Sort: Default</option>
-                        <option value="RATE_4STAR">Highest 4★ Rate (% 4★)</option>
-                        <option value="MOST_4STAR">Most 4★ Operators (Cert Farm)</option>
-                        <option value="CHANCE">Highest Single Target Chance</option>
-                        <option value="TAGS_ASC">Fewest Tags First</option>
+                        <option value="DEFAULT">Sort: Default (Highest Guaranteed Tier)</option>
+                        <option value="RARITY_DESC">Highest Guaranteed Tier (6★ > 5★ > 4★)</option>
+                        <option value="AVERAGE_RARITY">Highest Average Rarity</option>
+                        <option value="CHANCE">Sole Target First (100% Guaranteed Single)</option>
+                        <option value="TAGS_ASC">Fewest Tags First (1 Tag > 2 Tags)</option>
+                        <option value="MOST_OPS">Most Matched Operators</option>
                     </select>
                 </div>
             </div>
@@ -307,22 +308,27 @@
             // 3. Sort by SortMode
             query = sortMode switch
             {
-                "RATE_4STAR" => query.OrderByDescending(c => c.Star4Rate)
-                                     .ThenByDescending(c => c.Star4Count)
-                                     .ThenBy(c => c.Tags.Count),
-                "MOST_4STAR" => query.OrderByDescending(c => c.Star4Count)
-                                     .ThenByDescending(c => c.Star4Rate)
-                                     .ThenBy(c => c.Tags.Count),
+                "RARITY_DESC" => query.OrderByDescending(c => c.MinRarity)
+                                      .ThenByDescending(c => c.AverageRarity)
+                                      .ThenBy(c => c.Tags.Count),
+                "AVERAGE_RARITY" => query.OrderByDescending(c => c.AverageRarity)
+                                         .ThenByDescending(c => c.MinRarity)
+                                         .ThenBy(c => c.Tags.Count),
                 "CHANCE" => query.OrderByDescending(c => c.IsSoleOperator)
                                  .ThenBy(c => c.OperatorCount)
                                  .ThenByDescending(c => c.MinRarity),
                 "TAGS_ASC" => query.OrderBy(c => c.Tags.Count)
                                    .ThenByDescending(c => c.MinRarity),
+                "MOST_OPS" => query.OrderByDescending(c => c.OperatorCount)
+                                   .ThenByDescending(c => c.MinRarity),
                 _ => (!string.IsNullOrWhiteSpace(targetQuery)
                     ? query.OrderByDescending(c => c.IsSoleOperator)
                            .ThenBy(c => c.OperatorCount)
                            .ThenByDescending(c => c.MinRarity)
-                    : query)
+                    : query.OrderByDescending(c => c.MinRarity)
+                           .ThenByDescending(c => c.IsSoleOperator)
+                           .ThenBy(c => c.Tags.Count)
+                           .ThenByDescending(c => c.AverageRarity))
             };
 
             return query;

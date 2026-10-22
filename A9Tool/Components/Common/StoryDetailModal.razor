@@ -1,0 +1,466 @@
+@using Core.Models.Entities
+@using Core.Services
+@inject StoryService StoryService
+
+@if (IsOpen && Node != null)
+{
+    <div class="story-detail-backdrop" @onclick="Close">
+        <div class="story-detail-container" @onclick:stopPropagation="true">
+            <!-- Modal Header -->
+            <div class="story-detail-header">
+                <div class="detail-header-left">
+                    <span class="detail-prts-badge">PRTS // LORE DOSSIER</span>
+                    <h3 class="detail-event-title">@Node.Title</h3>
+                    <span class="detail-event-sub">@Node.SubTitle</span>
+                </div>
+                <button class="detail-close-btn" @onclick="Close" title="Close Details">✕</button>
+            </div>
+
+            <!-- Modal Content Grid -->
+            <div class="story-detail-body">
+                <!-- Left Sidebar: Event Info & Episode List -->
+                <div class="detail-sidebar">
+                    @if (!string.IsNullOrEmpty(Node.BannerUrl))
+                    {
+                        <div class="detail-poster-wrap">
+                            <img src="@Node.BannerUrl" alt="@Node.Title" loading="lazy" />
+                        </div>
+                    }
+
+                    <div class="detail-meta-box">
+                        <div class="meta-row">
+                            <span class="meta-label">CLASSIFICATION:</span>
+                            <span class="meta-val highlight">@Node.Code</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">TOTAL EPISODES:</span>
+                            <span class="meta-val">@Node.Episodes.Count stages</span>
+                        </div>
+                        <p class="meta-desc">@Node.Description</p>
+                    </div>
+
+                    <!-- Episode Selector Navigation -->
+                    <div class="detail-episodes-nav">
+                        <div class="nav-title-bar">
+                            <span class="nav-title">SELECT STAGE / EPISODE</span>
+                            <span class="nav-count-badge">@Node.Episodes.Count</span>
+                        </div>
+                        
+                        <div class="nav-list-scrollable">
+                            @foreach (var ep in Node.Episodes)
+                            {
+                                var isActive = CurrentEpisode?.StoryId == ep.StoryId;
+                                <div class="nav-item-card @(isActive ? "active" : "")" 
+                                     @onclick="() => SelectEpisode(ep)"
+                                     title="Click to view details: @ep.StoryName">
+                                    <div class="nav-item-body">
+                                        <div class="nav-item-header">
+                                            <span class="nav-code-pill">@ep.StoryCode</span>
+                                            @if (!string.IsNullOrEmpty(ep.AvgTag))
+                                            {
+                                                <span class="nav-avg-tag">@ep.AvgTag</span>
+                                            }
+                                        </div>
+                                        <div class="nav-name-text">@ep.StoryName</div>
+                                    </div>
+                                    <button class="nav-quick-read-btn" 
+                                            @onclick:stopPropagation="true" 
+                                            @onclick="() => QuickRead(ep)" 
+                                            title="Read @ep.StoryCode immediately">
+                                        ▶
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Main Column: Chapter Details & Skip Summary -->
+                <div class="detail-main">
+                    @if (CurrentEpisode != null)
+                    {
+                        <!-- Active Episode Header -->
+                        <div class="ep-header-card">
+                            <div class="ep-header-tags">
+                                <span class="ep-tag-code">@CurrentEpisode.StoryCode</span>
+                                @if (!string.IsNullOrEmpty(CurrentEpisode.AvgTag))
+                                {
+                                    <span class="ep-tag-avg">@CurrentEpisode.AvgTag</span>
+                                }
+                            </div>
+                            <h2 class="ep-header-title">@CurrentEpisode.StoryName</h2>
+                            <div class="ep-header-path">
+                                <code>@CurrentEpisode.StoryPath</code>
+                            </div>
+                        </div>
+
+                        <!-- Official Skip Summary (Tóm tắt cốt truyện trong game) -->
+                        <div class="ep-summary-section">
+                            <div class="section-badge-bar">
+                                <span class="badge-icon">📜</span>
+                                <span class="badge-text">OFFICIAL STORY SYNOPSIS (SKIP SUMMARY)</span>
+                            </div>
+
+                            @if (_isLoadingSummary)
+                            {
+                                <div class="summary-loading">
+                                    <div class="summary-spinner"></div>
+                                    <span>Decrypting PRTS historical records from Terra archives...</span>
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(_summaryText))
+                            {
+                                <div class="summary-quote-card">
+                                    <span class="quote-mark">“</span>
+                                    <p class="summary-content">@_summaryText</p>
+                                    <span class="quote-source">— Arknights Tactical Mission Debrief Record</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="summary-empty">
+                                    <p>No operational skip synopsis was recorded for this story node.</p>
+                                    <span class="empty-hint">You can launch the full dialogue transcript reader directly below.</span>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Characters / Operators Appearing in Story (Filtered out generic non-characters) -->
+                        <div class="ep-characters-section">
+                            <div class="section-badge-bar">
+                                <span class="badge-icon">👥</span>
+                                <span class="badge-text">CHARACTERS &amp; OPERATORS IN THIS STORY (@_appearingCharacters.Count)</span>
+                            </div>
+
+                            @if (_isLoadingCharacters)
+                            {
+                                <div class="chars-loading-bar">
+                                    <div class="summary-spinner"></div>
+                                    <span>Scanning PRTS personnel identification logs...</span>
+                                </div>
+                            }
+                            else if (_appearingCharacters.Count > 0)
+                            {
+                                <div class="ep-chars-grid">
+                                    @foreach (var ch in _appearingCharacters)
+                                    {
+                                        <div class="ep-char-pill" title="@ch.Name">
+                                            @if (!string.IsNullOrEmpty(ch.AvatarUrl))
+                                            {
+                                                <img src="@ch.AvatarUrl" alt="@ch.Name" class="ep-char-thumb" loading="lazy" />
+                                            }
+                                            else
+                                            {
+                                                <span class="ep-char-initial">@(string.IsNullOrEmpty(ch.Name) ? "?" : ch.Name[0])</span>
+                                            }
+                                            <span class="ep-char-label">@ch.Name</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (!_isLoadingSummary)
+                            {
+                                <div class="ep-chars-empty">
+                                    <span>No distinct speaker records identified for this operational log.</span>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div class="ep-actions-bar">
+                            <button class="btn-read-story" @onclick="StartReading">
+                                ▶ READ FULL STORY SCRIPT
+                            </button>
+
+                            @if (!string.IsNullOrEmpty(Node.YouTubePvId))
+                            {
+                                <button class="btn-watch-pv" @onclick="WatchPv">
+                                    🎬 WATCH TRAILER PV
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="detail-no-selection">
+                            <p>Select a chapter from the left to read its summary and details.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* Wider Container & Balanced Split */
+    .story-detail-container {
+        max-width: 1120px !important;
+        width: 95vw !important;
+    }
+
+    .story-detail-body {
+        grid-template-columns: 380px 1fr !important;
+        height: 75vh !important;
+        max-height: 750px !important;
+    }
+
+    .detail-sidebar {
+        padding: 16px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        overflow: hidden !important;
+    }
+
+    .detail-episodes-nav {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .nav-title-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .nav-title {
+        font-size: 0.72rem !important;
+        font-weight: 800 !important;
+        color: #94a3b8 !important;
+        letter-spacing: 1px !important;
+    }
+
+    .nav-count-badge {
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.15);
+        padding: 1px 6px;
+        border-radius: 4px;
+    }
+
+    .nav-list-scrollable {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+
+    .nav-list-scrollable::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .nav-list-scrollable::-webkit-scrollbar-thumb {
+        background: rgba(56, 189, 248, 0.3);
+        border-radius: 2px;
+    }
+
+    /* Redesigned Episode Item Card */
+    .nav-item-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        gap: 8px;
+    }
+
+    .nav-item-card:hover {
+        background: rgba(30, 41, 59, 0.85);
+        border-color: rgba(56, 189, 248, 0.4);
+        transform: translateX(2px);
+    }
+
+    .nav-item-card.active {
+        background: rgba(14, 165, 233, 0.18) !important;
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+    }
+
+    .nav-item-body {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .nav-item-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .nav-code-pill {
+        font-family: var(--font-mono, monospace);
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.15);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        padding: 1px 6px;
+        border-radius: 4px;
+    }
+
+    .nav-avg-tag {
+        font-size: 0.64rem;
+        font-weight: 700;
+        color: #fbbf24;
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        padding: 1px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+    }
+
+    .nav-name-text {
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .nav-quick-read-btn {
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 6px;
+        color: #38bdf8;
+        font-size: 0.8rem;
+        font-weight: 800;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+    .nav-quick-read-btn:hover {
+        background: #38bdf8;
+        color: #0f172a;
+        transform: scale(1.08);
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public StoryNode? Node { get; set; }
+    [Parameter] public StoryEpisodeInfo? InitialEpisode { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<StoryEpisodeInfo> OnReadChapter { get; set; }
+    [Parameter] public EventCallback<string> OnWatchPv { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private StoryEpisodeInfo? CurrentEpisode;
+    private string _summaryText = string.Empty;
+    private bool _isLoadingSummary = false;
+    private List<StoryCharacterShowcase> _appearingCharacters = new();
+    private bool _isLoadingCharacters = false;
+
+    // Filter list to exclude generic ambient non-characters
+    private static readonly HashSet<string> IgnoredSpeakerNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "???", "??", "?", "Distant Voice", "Voice", "Voices", "Unfamiliar Voice", 
+        "Familiar Voice", "Mysterious Voice", "Unknown Voice", "Strange Voice",
+        "Radio", "Intercom", "Broadcast", "Announcement", "System", "Computer",
+        "Someone", "Everyone", "Nobody", "Unknown", "Whisper", "Echo", "Shadow"
+    };
+
+    private static bool IsValidCharacterName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        var trimmed = name.Trim();
+        if (trimmed.Contains('?') || trimmed.Contains('？')) return false;
+        if (IgnoredSpeakerNames.Contains(trimmed)) return false;
+        if (trimmed.EndsWith("Voice", StringComparison.OrdinalIgnoreCase)) return false;
+        if (trimmed.StartsWith("Distant", StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && Node != null)
+        {
+            var targetEp = InitialEpisode ?? Node.Episodes.FirstOrDefault();
+            if (targetEp != null && (CurrentEpisode == null || CurrentEpisode.StoryId != targetEp.StoryId))
+            {
+                await SelectEpisode(targetEp);
+            }
+        }
+    }
+
+    private async Task SelectEpisode(StoryEpisodeInfo ep)
+    {
+        CurrentEpisode = ep;
+        _summaryText = string.Empty;
+        _appearingCharacters.Clear();
+        _isLoadingSummary = true;
+        _isLoadingCharacters = true;
+        StateHasChanged();
+
+        if (!string.IsNullOrEmpty(ep.StoryPath))
+        {
+            var summaryTask = StoryService.GetStorySummaryAsync(ep.StoryPath);
+            var scriptTask = StoryService.GetStoryScriptAsync(ep.StoryId, ep.StoryPath, ep.StoryName);
+
+            _summaryText = await summaryTask;
+            _isLoadingSummary = false;
+            StateHasChanged();
+
+            var bundle = await scriptTask;
+            if (bundle?.CharactersAppearing != null)
+            {
+                // Exclude generic placeholder voices like "Distant Voice", "???", etc.
+                _appearingCharacters = bundle.CharactersAppearing
+                    .Where(c => IsValidCharacterName(c.Name))
+                    .ToList();
+            }
+        }
+
+        _isLoadingSummary = false;
+        _isLoadingCharacters = false;
+        StateHasChanged();
+    }
+
+    private async Task StartReading()
+    {
+        if (CurrentEpisode != null)
+        {
+            await OnReadChapter.InvokeAsync(CurrentEpisode);
+        }
+    }
+
+    private async Task QuickRead(StoryEpisodeInfo ep)
+    {
+        CurrentEpisode = ep;
+        await OnReadChapter.InvokeAsync(ep);
+    }
+
+    private async Task WatchPv()
+    {
+        if (Node != null && !string.IsNullOrEmpty(Node.YouTubePvId))
+        {
+            await OnWatchPv.InvokeAsync(Node.YouTubePvId);
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

@@ -96,6 +96,8 @@ namespace A9Tool
             builder.Services.AddScoped<CharacterService>();
             builder.Services.AddSingleton<LevelingCostService>();
             builder.Services.AddScoped<RecruitmentService>();
+            builder.Services.AddScoped<StoryService>();
+            builder.Services.AddSingleton<A9Tool.Services.LoadingStateService>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

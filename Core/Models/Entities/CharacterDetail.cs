@@ -10,9 +10,6 @@ public class CharacterDetail : Character
     [JsonPropertyName("displayNumber")]
     public string? DisplayNumber { get; set; }
 
-    [JsonPropertyName("subProfessionId")]
-    public string? SubProfessionId { get; set; }
-
     [JsonPropertyName("phases")]
     public List<Phase> Phases { get; set; } = new();
 

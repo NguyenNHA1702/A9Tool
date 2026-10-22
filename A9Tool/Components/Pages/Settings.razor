@@ -1,0 +1,192 @@
+@page "/settings"
+@inject IJSRuntime JS
+@inject Core.Services.ImageService ImageService
+@inject NavigationManager Nav
+
+<div class="prts-settings-viewport">
+    <div class="settings-tactical-header">
+        <div>
+            <div class="settings-sub-label">// RHODES ISLAND SYSTEM CONFIGURATION</div>
+            <h1 class="settings-title">SYSTEM CONFIGURATION & THEMES</h1>
+        </div>
+        <div class="settings-ver-chip">PRTS KERNEL v37.7.41</div>
+    </div>
+
+    <div class="settings-grid-container">
+        <!-- Left Navigation Pane -->
+        <div class="settings-nav-pane">
+            <button class="settings-tab-action @(activeTab == "theme" ? "active" : "")" @onclick='() => activeTab = "theme"'>
+                <span>🎨</span> Visual & Themes
+            </button>
+            <button class="settings-tab-action @(activeTab == "audio" ? "active" : "")" @onclick='() => activeTab = "audio"'>
+                <span>🔊</span> Audio & BGM
+            </button>
+            <button class="settings-tab-action @(activeTab == "cache" ? "active" : "")" @onclick='() => activeTab = "cache"'>
+                <span>💾</span> Storage & Cache
+            </button>
+            <button class="settings-tab-action @(activeTab == "about" ? "active" : "")" @onclick='() => activeTab = "about"'>
+                <span>ℹ️</span> About & Release
+            </button>
+        </div>
+
+        <!-- Right Main Pane -->
+        <div class="settings-main-pane">
+            @if (activeTab == "theme")
+            {
+                <div class="settings-section-title">CANONICAL THEME SELECTOR</div>
+                <p class="settings-section-desc">Customize tactical interface palette tailored to Arknights aesthetics:</p>
+
+                <!-- Theme Cards -->
+                <div class="theme-card-picker">
+                    <!-- Theme 1: Canon Light -->
+                    <div class="theme-option-box @(currentTheme == "light" ? "active-theme" : "")" @onclick='() => SetTheme("light")'>
+                        <div class="theme-box-name">⚪ Canon Light</div>
+                        <div class="theme-box-sub">Technical Metallic White (Default)</div>
+                        <div class="color-swatch-bar" style="background: linear-gradient(90deg, #eceff2, #0f172a);"></div>
+                    </div>
+
+                    <!-- Theme 2: Night Dark -->
+                    <div class="theme-option-box @(currentTheme == "dark" ? "active-theme" : "")" @onclick='() => SetTheme("dark")'>
+                        <div class="theme-box-name">⚫ Night Dark</div>
+                        <div class="theme-box-sub">Deep Tactical Obsidian</div>
+                        <div class="color-swatch-bar" style="background: linear-gradient(90deg, #090e15, #00bcd4);"></div>
+                    </div>
+
+                    <!-- Theme 3: Imagination Pink -->
+                    <div class="theme-option-box @(currentTheme == "imagination" ? "active-theme" : "")" @onclick='() => SetTheme("imagination")'>
+                        <div class="theme-box-name">🌸 Imagination</div>
+                        <div class="theme-box-sub">Eastern Lotus & Jade</div>
+                        <div class="color-swatch-bar" style="background: linear-gradient(90deg, #fff1f5, #ec4899, #06b6d4);"></div>
+                    </div>
+                </div>
+
+                <!-- Custom Accent Palette -->
+                <div class="setting-item-row" style="margin-top: 24px;">
+                    <div>
+                        <div class="setting-item-name">Custom Accent Palette</div>
+                        <div class="setting-item-desc">Select primary highlight hue for neon borders and scanlines</div>
+                    </div>
+                    <div class="accent-palette-buttons">
+                        <button class="palette-chip" style="background:#0284c7; color:#fff;" @onclick='() => SetCustomAccent("#0284c7")'>Terra Blue</button>
+                        <button class="palette-chip" style="background:#10b981; color:#fff;" @onclick='() => SetCustomAccent("#10b981")'>Rhine Emerald</button>
+                        <button class="palette-chip" style="background:#f59e0b; color:#fff;" @onclick='() => SetCustomAccent("#f59e0b")'>Columbia Gold</button>
+                        <button class="palette-chip" style="background:#8b5cf6; color:#fff;" @onclick='() => SetCustomAccent("#8b5cf6")'>Leithanien Violet</button>
+                    </div>
+                </div>
+
+                <!-- Window Resolution Guideline -->
+                <div class="setting-item-row">
+                    <div>
+                        <div class="setting-item-name">Recommended Viewport Resolution</div>
+                        <div class="setting-item-desc">Canonical ratio 16:9 HD (1280 × 720 px) or Ultra-wide 1080p</div>
+                    </div>
+                    <span class="setting-tag">1280 × 720 HD</span>
+                </div>
+            }
+            else if (activeTab == "audio")
+            {
+                <div class="settings-section-title">COMBAT AUDIO & MONSTER SIREN RECORDS</div>
+                <p class="settings-section-desc">Background music and tactical sound parameters:</p>
+
+                <div class="setting-item-row">
+                    <div>
+                        <div class="setting-item-name">Autoplay BGM upon launch</div>
+                        <div class="setting-item-desc">Stream Rhodes Island canonical tracks automatically</div>
+                    </div>
+                    <button class="setting-switch @(autoPlayBgm ? "active" : "")" @onclick="() => autoPlayBgm = !autoPlayBgm">
+                        @(autoPlayBgm ? "ENABLED" : "DISABLED")
+                    </button>
+                </div>
+
+                <div class="setting-item-row">
+                    <div>
+                        <div class="setting-item-name">External Stream & YouTube Audio Links</div>
+                        <div class="setting-item-desc">Support for custom YouTube links, operator character EPs, or direct audio streams</div>
+                    </div>
+                    <span class="setting-tag active-tag">ENABLED</span>
+                </div>
+            }
+            else if (activeTab == "cache")
+            {
+                <div class="settings-section-title">OFFLINE DISK CACHE MANAGEMENT</div>
+                <p class="settings-section-desc">Manage cached Operator portraits and story archives for high-speed offline access:</p>
+
+                <div class="setting-item-row">
+                    <div>
+                        <div class="setting-item-name">Story Archive Cache (Story Logs & Avatars)</div>
+                        <div class="setting-item-desc">Cached Main Theme chapters EP 00 -> EP 14</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="setting-tag">14 Chapters (3.2 MB)</span>
+                        <button class="cache-clear-btn" @onclick="ClearStoryCache">PURGE CACHE</button>
+                    </div>
+                </div>
+
+                <div class="setting-item-row">
+                    <div>
+                        <div class="setting-item-name">Operator Portrait Cache (`charportraits` & Splash)</div>
+                        <div class="setting-item-desc">Pre-cached portraits synced from Aceship & GitHub CDNs</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="setting-tag">@imageCount Images (@imageSizeMb MB)</span>
+                        <button class="cache-clear-btn" @onclick="ClearImageCache">PURGE IMAGES</button>
+                    </div>
+                </div>
+            }
+            else if (activeTab == "about")
+            {
+                <div class="settings-section-title">ABOUT A9TOOL // PRTS COMPANION</div>
+                <div class="about-card">
+                    <div style="font-family:var(--font-bebas); font-size:32px; color:#0284c7;">A9TOOL • PRTS TERRA TERMINAL</div>
+                    <p style="font-size:13px; line-height:1.7; color:var(--foreground); margin:12px 0;">
+                        Rhodes Island tactical diagnostic hub and comprehensive operator database designed for the Doctor.
+                        Built with authentic <strong>Industrial Sci-Fi Diegetic UI</strong> aesthetics (Zero Border-Radius),
+                        featuring squad composition analyzer, recruitment tag probability calculator, and immersive visual novel story player.
+                    </p>
+                    <div class="about-meta-row">
+                        <div><strong>Version:</strong> v37.7.41 (Canon Rework)</div>
+                        <div><strong>Framework:</strong> .NET 10 MAUI Blazor Hybrid</div>
+                        <div><strong>Interface:</strong> Arknights PRTS Industrial Tactical UI</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string activeTab = "theme";
+    private string currentTheme = "light";
+    private bool autoPlayBgm = true;
+
+    private int imageCount = 286;
+    private double imageSizeMb = 48.5;
+
+    private async Task SetTheme(string theme)
+    {
+        currentTheme = theme;
+        await JS.InvokeVoidAsync("eval", $@"
+            document.body.classList.remove('theme-light', 'theme-dark', 'theme-imagination');
+            document.body.classList.add('theme-{theme}');
+        ");
+    }
+
+    private async Task SetCustomAccent(string colorHex)
+    {
+        await JS.InvokeVoidAsync("eval", $@"
+            document.documentElement.style.setProperty('--primary', '{colorHex}');
+            document.documentElement.style.setProperty('--prts-terra-blue', '{colorHex}');
+        ");
+    }
+
+    private void ClearStoryCache()
+    {
+        // Notification placeholder
+    }
+
+    private void ClearImageCache()
+    {
+        imageCount = 0;
+        imageSizeMb = 0.0;
+    }
+}

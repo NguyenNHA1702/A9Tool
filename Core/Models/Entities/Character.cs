@@ -13,6 +13,9 @@ public class Character
     [JsonPropertyName("profession")]
     public string? Profession { get; set; }
 
+    [JsonPropertyName("subProfessionId")]
+    public string? SubProfessionId { get; set; }
+
     [JsonPropertyName("nationId")]
     public string? NationId { get; set; }
 

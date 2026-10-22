@@ -1,0 +1,1202 @@
+@using Core.Models.Entities
+@using System.Text.Json
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsOpen && Bundle != null)
+{
+    <div class="vn-modal-overlay @(IsShakeActive ? "vn-screen-shake" : "")">
+        <!-- Floating Control Toolbar -->
+        <header class="vn-toolbar">
+            <div class="vn-toolbar-left">
+                <span class="vn-mode-badge">
+                    @(CurrentMode == StoryDisplayMode.VisualNovel ? "🎭 VISUAL NOVEL" : "📖 LIGHT NOVEL")
+                </span>
+                <h4 class="vn-story-title">@Bundle.Title</h4>
+                @if (CurrentMode == StoryDisplayMode.VisualNovel)
+                {
+                    <span class="vn-progress-indicator">
+                        @(CurrentIndex + 1) / @Bundle.TotalLines
+                    </span>
+                }
+                else
+                {
+                    <span class="vn-progress-indicator">
+                        Total: @Bundle.TotalLines lines
+                    </span>
+                }
+            </div>
+
+            <!-- PRTS High-Tech Media Player Pill (Track Title & Animated Equalizer) -->
+            <div class="vn-player-pill @(IsMuted || CurrentMode == StoryDisplayMode.LightNovel ? "muted" : "playing")" 
+                 @onclick="ToggleMute" 
+                 title="@(CurrentMode == StoryDisplayMode.LightNovel ? "Silent Reading Mode: BGM Muted" : "Click to toggle sound (Now Playing: " + CurrentBgmTitle + ")")">
+                <div class="player-eq @(!IsMuted && CurrentMode == StoryDisplayMode.VisualNovel ? "animating" : "")">
+                    <span class="bar bar1"></span>
+                    <span class="bar bar2"></span>
+                    <span class="bar bar3"></span>
+                </div>
+                <div class="player-meta">
+                    <span class="player-label">@(CurrentMode == StoryDisplayMode.LightNovel ? "SILENT READING" : (IsMuted ? "BGM MUTED" : "NOW PLAYING"))</span>
+                    <span class="player-title" title="@CurrentBgmTitle">@CurrentBgmTitle</span>
+                </div>
+                <button class="player-btn" type="button" tabindex="-1">
+                    @(IsMuted || CurrentMode == StoryDisplayMode.LightNovel ? "🔇" : "🔊")
+                </button>
+            </div>
+
+            <div class="vn-toolbar-actions">
+                <!-- Bookmark Action -->
+                <button class="vn-tool-btn @(IsBookmarked ? "active-glow bookmark-active" : "")"
+                        @onclick="ToggleBookmark"
+                        title="@(IsBookmarked ? "Bookmarked (Click to remove)" : "Bookmark this episode & current reading line")">
+                    @(IsBookmarked ? "🔖 Bookmarked" : "🔖 Bookmark")
+                </button>
+
+                <!-- Dual Mode Switcher -->
+                <button class="vn-tool-btn @(CurrentMode == StoryDisplayMode.VisualNovel ? "active" : "")"
+                        @onclick="() => SetMode(StoryDisplayMode.VisualNovel)"
+                        title="Switch to Interactive Visual Novel Mode">
+                    🎭 VN Mode
+                </button>
+                <button class="vn-tool-btn @(CurrentMode == StoryDisplayMode.LightNovel ? "active" : "")"
+                        @onclick="() => SetMode(StoryDisplayMode.LightNovel)"
+                        title="Switch to Scrollable Light Novel Mode">
+                    📖 LN Mode
+                </button>
+
+                <!-- VN Specific Controls -->
+                @if (CurrentMode == StoryDisplayMode.VisualNovel)
+                {
+                    <button class="vn-tool-btn @(IsAutoPlay ? "active-glow" : "")"
+                            @onclick="ToggleAutoPlay"
+                            title="Auto Play Dialogue">
+                        @(IsAutoPlay ? "⏸ Pause Auto" : "▶ Auto")
+                    </button>
+                    <button class="vn-tool-btn"
+                            @onclick="() => ShowLog = !ShowLog"
+                            title="View Dialogue History">
+                        📜 Log
+                    </button>
+                }
+
+                <!-- LN Specific Font Adjustment Controls -->
+                @if (CurrentMode == StoryDisplayMode.LightNovel)
+                {
+                    <button class="vn-tool-btn" @onclick="() => AdjustFontSize(-1)" title="Decrease font size">A-</button>
+                    <button class="vn-tool-btn" @onclick="() => AdjustFontSize(1)" title="Increase font size">A+</button>
+                    <button class="vn-tool-btn" @onclick="CycleLnTheme" title="Cycle Reading Theme">
+                        🎨 @LnTheme.ToUpperInvariant()
+                    </button>
+                }
+
+                <!-- Exit Reader -->
+                <button class="vn-tool-btn close-btn" @onclick="Close" title="Close Story Reader">
+                    ✕ Close
+                </button>
+            </div>
+        </header>
+
+        <!-- Toast Feedback Notification -->
+        @if (!string.IsNullOrEmpty(ToastMessage))
+        {
+            <div class="vn-reader-toast">
+                @ToastMessage
+            </div>
+        }
+
+        <!-- MODE 1: VISUAL NOVEL (INTERACTIVE FULLSCREEN) -->
+        @if (CurrentMode == StoryDisplayMode.VisualNovel)
+        {
+            <div class="vn-stage" @onclick="HandleStageClick">
+                <!-- Background CG (prioritize full-screen illustration CG if present, then background) -->
+                @{
+                    var activeBgUrl = CurrentLine?.IllustrationUrl ?? CurrentLine?.BackgroundCgUrl ?? Bundle.InitialBackgroundUrl;
+                }
+                <div class="vn-bg-layer" style="background-image: url('@activeBgUrl');">
+                    <div class="vn-bg-vignette"></div>
+                </div>
+
+                <!-- Character Presentation Layer (Left & Right) -->
+                <div class="vn-character-layer">
+                    <!-- Left Slot Character Sprite -->
+                    @if (!string.IsNullOrEmpty(CurrentLine?.LeftCharacterSpriteUrl))
+                    {
+                        <div class="vn-char-slot slot-left @(CurrentLine?.ActiveSpeakerSide == "left" ? "focused" : "dimmed")">
+                            <img src="@CurrentLine?.LeftCharacterSpriteUrl" 
+                                 alt="@(CurrentLine?.SpeakerName ?? "Operator")" 
+                                 class="vn-sprite-img" 
+                                 onerror="this.style.display='none';" />
+                        </div>
+                    }
+
+                    <!-- Right Slot Character Sprite -->
+                    @if (!string.IsNullOrEmpty(CurrentLine?.RightCharacterSpriteUrl))
+                    {
+                        <div class="vn-char-slot slot-right @(CurrentLine?.ActiveSpeakerSide == "right" ? "focused" : "dimmed")">
+                            <img src="@CurrentLine?.RightCharacterSpriteUrl" 
+                                 alt="@(CurrentLine?.SpeakerName ?? "Operator")" 
+                                 class="vn-sprite-img" 
+                                 onerror="this.style.display='none';" />
+                        </div>
+                    }
+                </div>
+
+                <!-- Interactive Doctor Decision Choice Overlay -->
+                @if (CurrentLine?.IsDecision == true && CurrentLine.DecisionOptions.Count > 0)
+                {
+                    <div class="vn-decision-overlay" @onclick:stopPropagation="true">
+                        <div class="vn-decision-prompt">
+                            <span class="prompt-icon">◆</span>
+                            <span class="prompt-label">DOCTOR'S DECISION REQUIRED</span>
+                        </div>
+                        <div class="vn-decision-options">
+                            @for (int i = 0; i < CurrentLine.DecisionOptions.Count; i++)
+                            {
+                                var opt = CurrentLine.DecisionOptions[i];
+                                var optVal = (CurrentLine.DecisionValues != null && i < CurrentLine.DecisionValues.Count) 
+                                    ? CurrentLine.DecisionValues[i] 
+                                    : (i + 1).ToString();
+                                var decIdx = CurrentLine.DecisionIndex;
+                                <button class="vn-decision-choice-btn" @onclick="() => HandleVnDecisionChoice(decIdx, optVal)">
+                                    <span class="choice-arrow">▶</span>
+                                    <span class="choice-text">@opt</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- IN-GAME ARKNIGHTS DIEGETIC DIALOGUE LAYER (NO BOX) -->
+                <div class="vn-ingame-dialogue-layer" @onclick="HandleStageClick">
+                    <div class="vn-ingame-bottom-gradient"></div>
+                    
+                    <div class="vn-ingame-text-row">
+                        @if (!string.IsNullOrEmpty(CurrentLine?.SpeakerName))
+                        {
+                            <span class="vn-ingame-speaker">@CurrentLine.SpeakerName</span>
+                        }
+                        <span class="vn-ingame-dialogue">
+                            @CurrentLine?.DialogueText
+                        </span>
+                    </div>
+
+                    @if (CurrentIndex >= Bundle.Lines.Count - 1)
+                    {
+                        <!-- End of Chapter Navigation Controls in VN Mode -->
+                        <div class="vn-end-actions" @onclick:stopPropagation="true">
+                            <span class="vn-end-label">CHAPTER COMPLETE</span>
+                            <div class="vn-end-btn-group">
+                                @if (PrevEpisode != null)
+                                {
+                                    <button class="vn-end-btn prev" @onclick="() => NavigateEpisode(PrevEpisode)">
+                                        ◀ Prev: @PrevEpisode.StoryCode
+                                    </button>
+                                }
+                                <button class="vn-end-btn replay" @onclick="ReplayFromBeginning">
+                                    ↺ Replay
+                                </button>
+                                @if (NextEpisode != null)
+                                {
+                                    <button class="vn-end-btn next" @onclick="() => NavigateEpisode(NextEpisode)">
+                                        Next Episode: @NextEpisode.StoryCode ▶
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Dialogue History Log Modal -->
+            @if (ShowLog)
+            {
+                <div class="vn-log-drawer" @onclick="() => ShowLog = false">
+                    <div class="vn-log-box" @onclick:stopPropagation="true">
+                        <div class="vn-log-header">
+                            <h3>📜 Dialogue History</h3>
+                            <button class="vn-tool-btn" @onclick="() => ShowLog = false">✕</button>
+                        </div>
+                        <div class="vn-log-content">
+                            @for (int i = 0; i <= CurrentIndex && i < Bundle.Lines.Count; i++)
+                            {
+                                var l = Bundle.Lines[i];
+                                <div class="vn-log-item">
+                                    <strong class="vn-log-speaker">@(l.SpeakerName ?? "Narration"):</strong>
+                                    <span class="vn-log-text">@l.DialogueText</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <!-- MODE 2: LIGHT NOVEL (WIKI.GG TRANSCRIPT STYLE SCROLL) -->
+            <div class="ln-reader-container theme-@LnTheme" style="font-size: @(LnFontSize)px;">
+                <div class="ln-reader-content wiki-transcript-layout">
+                    <!-- Wiki-style Header & Stage Meta -->
+                    <div class="wiki-header-card">
+                        <div class="wiki-stage-badge">
+                            <span class="badge-icon">📖</span>
+                            <span>OPERATION STORY TRANSCRIPT</span>
+                        </div>
+                        <h1 class="wiki-stage-title">@Bundle.Title</h1>
+                        <p class="wiki-stage-subtitle">Rhodes Island PRTS Canonical Archives • Terra Historical Database</p>
+
+                        <!-- Characters Appearing Showcase (Filtered to canonical characters only) -->
+                        @{
+                            var validChars = Bundle.CharactersAppearing?
+                                .Where(ch => Core.Services.StoryService.IsValidCharacterName(ch.Name))
+                                .ToList() ?? new List<StoryCharacterShowcase>();
+                        }
+                        @if (validChars.Count > 0)
+                        {
+                            <div class="wiki-characters-showcase">
+                                <div class="wiki-showcase-title">CHARACTERS APPEARING:</div>
+                                <div class="wiki-characters-grid">
+                                    @foreach (var ch in validChars)
+                                    {
+                                        <div class="wiki-character-pill" title="@ch.Name">
+                                            @if (!string.IsNullOrEmpty(ch.AvatarUrl))
+                                            {
+                                                <img class="wiki-char-thumb" src="@ch.AvatarUrl" alt="@ch.Name" loading="lazy" />
+                                            }
+                                            else
+                                            {
+                                                <div class="wiki-char-thumb-fallback">
+                                                    @GetSpeakerInitials(ch.Name)
+                                                </div>
+                                            }
+                                            <span class="wiki-char-name">@ch.Name</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Stage Summary Box (like wiki.gg) -->
+                        @if (!string.IsNullOrEmpty(Bundle.Summary))
+                        {
+                            <div class="wiki-summary-box">
+                                <div class="wiki-summary-header">
+                                    <span class="summary-badge">SYNOPSIS</span>
+                                </div>
+                                <p class="wiki-summary-body">
+                                    <i>@Bundle.Summary</i>
+                                </p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Transcript Lines -->
+                    <div class="wiki-transcript-body">
+                        @if (Bundle.Lines != null && Bundle.Lines.Count > 0)
+                        {
+                            @foreach (var line in Bundle.Lines)
+                            {
+                                @if (!ShouldRenderLine(line))
+                                {
+                                    continue;
+                                }
+                                <div class="wiki-transcript-item" @key="line.Index">
+                                    <!-- Inline CG Illustration break -->
+                                    @if (!string.IsNullOrEmpty(line.IllustrationUrl))
+                                    {
+                                        <div class="wiki-cg-illustration">
+                                            <img src="@line.IllustrationUrl" alt="Scene Illustration" loading="lazy" />
+                                        </div>
+                                    }
+
+                                    <!-- Location / Scene Divider if background changes -->
+                                    @if (line.IsSceneChange && string.IsNullOrEmpty(line.IllustrationUrl) && !string.IsNullOrEmpty(line.BackgroundCgUrl))
+                                    {
+                                        <div class="wiki-scene-banner">
+                                            <img src="@line.BackgroundCgUrl" alt="Scene Background" loading="lazy" />
+                                            <div class="wiki-scene-tag">SCENE TRANSITION</div>
+                                        </div>
+                                    }
+
+                                    @if (line.IsStageDirection)
+                                    {
+                                        <div class="wiki-stage-direction">
+                                            <span>@line.DialogueText</span>
+                                        </div>
+                                    }
+                                    else if (line.IsDecision)
+                                    {
+                                        var selectedVal = GetSelectedOptionVal(line.DecisionIndex, line.DecisionValues);
+                                        int optIdx = (line.DecisionValues != null && line.DecisionValues.Contains(selectedVal))
+                                            ? line.DecisionValues.IndexOf(selectedVal)
+                                            : 0;
+                                        var selectedText = (line.DecisionOptions != null && optIdx >= 0 && optIdx < line.DecisionOptions.Count)
+                                            ? line.DecisionOptions[optIdx]
+                                            : (line.DecisionOptions?.FirstOrDefault() ?? line.DialogueText);
+
+                                        <div class="wiki-dialogue-row doctor-decision-row ln-pure-text">
+                                            <div class="wiki-speaker-tag-col">
+                                                <span class="wiki-speaker-badge doctor-badge">Doctor</span>
+                                            </div>
+                                            <div class="wiki-dialogue-col">
+                                                <div class="doctor-decision-content">
+                                                    <p class="wiki-dialogue-text doctor-text">“@selectedText”</p>
+                                                    @if (line.DecisionOptions != null && line.DecisionOptions.Count > 1)
+                                                    {
+                                                        <div class="doctor-branch-selector">
+                                                            <span class="branch-selector-tag">BRANCH CHOICE:</span>
+                                                            <div class="branch-selector-chips">
+                                                                @for (int i = 0; i < line.DecisionOptions.Count; i++)
+                                                                {
+                                                                    var optVal = (line.DecisionValues != null && i < line.DecisionValues.Count) 
+                                                                        ? line.DecisionValues[i] 
+                                                                        : (i + 1).ToString();
+                                                                    var optText = line.DecisionOptions[i];
+                                                                    var isCurrent = (optVal == selectedVal);
+                                                                    <button type="button"
+                                                                            class="branch-chip-btn @(isCurrent ? "active" : "")"
+                                                                            @onclick="() => SelectDecision(line.DecisionIndex, optVal)"
+                                                                            title="Switch branch to: @optText">
+                                                                        <span class="chip-indicator">@(isCurrent ? "◆" : "◇")</span>
+                                                                        <span class="chip-text">@optText</span>
+                                                                    </button>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (line.IsNarrator)
+                                    {
+                                        <div class="wiki-narrative-row">
+                                            <p class="wiki-narrative-text">@line.DialogueText</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="wiki-dialogue-row ln-pure-text">
+                                            <div class="wiki-speaker-tag-col">
+                                                <span class="wiki-speaker-badge">@(line.SpeakerName ?? "Unknown")</span>
+                                            </div>
+                                            <div class="wiki-dialogue-col">
+                                                <p class="wiki-dialogue-text">@line.DialogueText</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <div class="ln-reader-footer">
+                        <span>— END OF CHAPTER SCRIPT (@(Bundle.Lines?.Count ?? 0) LINES) —</span>
+                    </div>
+
+                    <!-- Next & Previous Episode Navigation Bar for LN Mode -->
+                    <div class="ln-ep-nav-bar">
+                        @if (PrevEpisode != null)
+                        {
+                            <button class="ln-ep-nav-btn prev" @onclick="() => NavigateEpisode(PrevEpisode)">
+                                ◀ PREVIOUS: @PrevEpisode.StoryCode - @PrevEpisode.StoryName
+                            </button>
+                        }
+                        @if (NextEpisode != null)
+                        {
+                            <button class="ln-ep-nav-btn next" @onclick="() => NavigateEpisode(NextEpisode)">
+                                NEXT EPISODE: @NextEpisode.StoryCode - @NextEpisode.StoryName ▶
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public StoryScriptBundle? Bundle { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public StoryEpisodeInfo? NextEpisode { get; set; }
+    [Parameter] public StoryEpisodeInfo? PrevEpisode { get; set; }
+    [Parameter] public EventCallback<StoryEpisodeInfo> OnNavigateEpisode { get; set; }
+    [Parameter] public int InitialLineIndex { get; set; } = 0;
+    [Parameter] public string? StoryPath { get; set; }
+    [Parameter] public EventCallback OnBookmarkChanged { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private StoryDisplayMode CurrentMode = StoryDisplayMode.VisualNovel;
+    private int CurrentIndex = 0;
+    private bool IsAutoPlay = false;
+    private bool ShowLog = false;
+    private bool IsMuted = false;
+    private bool IsShakeActive = false;
+    private bool IsBookmarked = false;
+    private string? ToastMessage = null;
+    private string LnTheme = "dark"; // dark, sepia, light
+    private int LnFontSize = 17;
+    private System.Threading.Timer? _autoPlayTimer;
+    private string? _lastBundleId = null;
+    private int _lastInitialLineIndex = -1;
+    private Dictionary<int, string> SelectedDecisions = new();
+    private bool _isClosing = false;
+    private int _audioToken = 0;
+
+    private StoryDialogueLine? CurrentLine =>
+        (Bundle != null && Bundle.Lines.Count > 0 && CurrentIndex >= 0 && CurrentIndex < Bundle.Lines.Count)
+            ? Bundle.Lines[CurrentIndex]
+            : null;
+
+    private string CurrentBgmTitle
+    {
+        get
+        {
+            if (CurrentMode == StoryDisplayMode.LightNovel) return "Silent Reading (BGM Muted)";
+            if (IsMuted) return "Audio Muted";
+            return CurrentLine?.BgmTrackTitle ?? Bundle?.InitialBgmTitle ?? "Rhodes Island Ambient";
+        }
+    }
+
+    private string? CurrentBgmUrl =>
+        (CurrentMode == StoryDisplayMode.VisualNovel)
+            ? (CurrentLine?.BgmAudioUrl ?? Bundle?.InitialBgmUrl)
+            : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!IsOpen || Bundle == null)
+        {
+            bool wasActive = _lastBundleId != null;
+            _lastBundleId = null;
+            _lastInitialLineIndex = -1;
+            CurrentIndex = 0;
+            _isClosing = false;
+            if (wasActive)
+            {
+                StopAutoPlay();
+                await StopAllAudioAsync();
+            }
+            return;
+        }
+
+        if (_isClosing) return;
+
+        bool isNewStory = _lastBundleId != Bundle.StoryId;
+        bool isJumpRequested = InitialLineIndex != _lastInitialLineIndex;
+
+        if (isNewStory)
+        {
+            _lastBundleId = Bundle.StoryId;
+            SelectedDecisions.Clear();
+        }
+
+        if (isJumpRequested || isNewStory)
+        {
+            _lastInitialLineIndex = InitialLineIndex;
+            if (InitialLineIndex > 0 && InitialLineIndex < Bundle.Lines.Count)
+            {
+                CurrentIndex = InitialLineIndex;
+                PreseedDecisionsUpTo(InitialLineIndex);
+            }
+            else if (isNewStory || InitialLineIndex == 0)
+            {
+                CurrentIndex = 0;
+            }
+        }
+
+        // If the current line belongs to a predicate branch that hasn't been selected yet, adapt decision choice
+        if (CurrentLine != null && !ShouldRenderLine(CurrentLine))
+        {
+            if (!string.IsNullOrEmpty(CurrentLine.PredicateReferences))
+            {
+                var targetVal = CurrentLine.PredicateReferences.Split(';').FirstOrDefault()?.Trim() ?? "1";
+                SelectedDecisions[CurrentLine.DecisionIndex] = targetVal;
+            }
+        }
+
+        await CheckBookmarkStatusAsync();
+        TriggerCurrentLineEffect();
+        await PlayBgmAsync();
+    }
+
+    private void PreseedDecisionsUpTo(int targetIndex)
+    {
+        if (Bundle == null) return;
+        for (int i = 0; i <= targetIndex && i < Bundle.Lines.Count; i++)
+        {
+            var l = Bundle.Lines[i];
+            if (l.IsDecision && l.DecisionOptions.Count > 0)
+            {
+                var defVal = l.DecisionValues.FirstOrDefault() ?? "1";
+                SelectedDecisions.TryAdd(l.DecisionIndex, defVal);
+            }
+            if (!string.IsNullOrEmpty(l.PredicateReferences) && l.DecisionIndex > 0)
+            {
+                var activeRef = l.PredicateReferences.Split(';').FirstOrDefault()?.Trim();
+                if (!string.IsNullOrEmpty(activeRef))
+                {
+                    SelectedDecisions[l.DecisionIndex] = activeRef;
+                }
+            }
+        }
+    }
+
+    private async Task CheckBookmarkStatusAsync()
+    {
+        var targetStoryId = Bundle?.StoryId;
+        if (string.IsNullOrEmpty(targetStoryId))
+        {
+            IsBookmarked = false;
+            return;
+        }
+
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "a9_story_bookmarks");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var list = JsonSerializer.Deserialize<List<StoryBookmark>>(json);
+                IsBookmarked = list?.Any(b => b != null && string.Equals(b.StoryId, targetStoryId, StringComparison.OrdinalIgnoreCase)) == true;
+            }
+            else
+            {
+                IsBookmarked = false;
+            }
+        }
+        catch
+        {
+            IsBookmarked = false;
+        }
+    }
+
+    private async Task ToggleBookmark()
+    {
+        var bundle = Bundle;
+        var targetStoryId = bundle?.StoryId;
+        if (bundle == null || string.IsNullOrEmpty(targetStoryId)) return;
+
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "a9_story_bookmarks");
+            var rawList = string.IsNullOrEmpty(json)
+                ? new List<StoryBookmark>()
+                : (JsonSerializer.Deserialize<List<StoryBookmark>>(json) ?? new List<StoryBookmark>());
+
+            var list = rawList.Where(b => b != null && !string.IsNullOrEmpty(b.StoryId)).ToList();
+
+            var existing = list.FirstOrDefault(b => string.Equals(b.StoryId, targetStoryId, StringComparison.OrdinalIgnoreCase));
+            
+            // If already bookmarked at this exact same line, toggle off (remove)
+            if (existing != null && existing.LineIndex == CurrentIndex)
+            {
+                list.Remove(existing);
+                IsBookmarked = false;
+                ShowToast("Bookmark removed.");
+            }
+            else
+            {
+                // If it existed at a different line or is new, save current line!
+                if (existing != null)
+                {
+                    list.Remove(existing);
+                }
+
+                var excerpt = CurrentLine?.DialogueText;
+                if (!string.IsNullOrEmpty(excerpt) && excerpt.Length > 80)
+                {
+                    excerpt = excerpt[..80] + "...";
+                }
+
+                list.Insert(0, new StoryBookmark
+                {
+                    StoryId = targetStoryId,
+                    StoryPath = StoryPath,
+                    Title = bundle.Title ?? "Story",
+                    LineIndex = CurrentIndex,
+                    TotalLines = bundle.TotalLines,
+                    LineExcerpt = excerpt,
+                    SavedAt = DateTime.UtcNow
+                });
+                IsBookmarked = true;
+                ShowToast($"Progress saved at line {CurrentIndex + 1}!");
+            }
+
+            var updatedJson = JsonSerializer.Serialize(list);
+            await JS.InvokeVoidAsync("localStorage.setItem", "a9_story_bookmarks", updatedJson);
+            await SaveReadingSessionAsync();
+            await OnBookmarkChanged.InvokeAsync();
+        }
+        catch { }
+    }
+
+    private async Task SaveReadingSessionAsync()
+    {
+        var bundle = Bundle;
+        var targetStoryId = bundle?.StoryId;
+        if (bundle == null || string.IsNullOrEmpty(targetStoryId)) return;
+
+        try
+        {
+            var excerpt = CurrentLine?.DialogueText;
+            if (!string.IsNullOrEmpty(excerpt) && excerpt.Length > 90)
+            {
+                excerpt = excerpt[..90] + "...";
+            }
+
+            var session = new StoryBookmark
+            {
+                StoryId = targetStoryId,
+                StoryPath = StoryPath,
+                Title = bundle.Title ?? "Story",
+                LineIndex = CurrentIndex,
+                TotalLines = bundle.TotalLines,
+                LineExcerpt = excerpt,
+                SavedAt = DateTime.UtcNow
+            };
+            var json = JsonSerializer.Serialize(session);
+            await JS.InvokeVoidAsync("localStorage.setItem", "a9_current_reading", json);
+        }
+        catch { }
+    }
+
+    private void ShowToast(string message)
+    {
+        ToastMessage = message;
+        StateHasChanged();
+        _ = Task.Delay(2500).ContinueWith(_ =>
+        {
+            ToastMessage = null;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private async Task NavigateEpisode(StoryEpisodeInfo target)
+    {
+        StopAutoPlay();
+        await OnNavigateEpisode.InvokeAsync(target);
+    }
+
+    private void ReplayFromBeginning()
+    {
+        CurrentIndex = 0;
+        SelectedDecisions.Clear();
+        TriggerCurrentLineEffect();
+        _ = PlayBgmAsync();
+        StateHasChanged();
+    }
+
+    private string GetSelectedOptionVal(int decisionIndex, List<string>? values)
+    {
+        if (SelectedDecisions.TryGetValue(decisionIndex, out var val))
+        {
+            return val;
+        }
+        return values?.FirstOrDefault() ?? "1";
+    }
+
+    private void SelectDecision(int decisionIndex, string val)
+    {
+        SelectedDecisions[decisionIndex] = val;
+        StateHasChanged();
+    }
+
+    private bool ShouldRenderLine(StoryDialogueLine line)
+    {
+        if (string.IsNullOrEmpty(line.PredicateReferences)) return true;
+        var selectedVal = GetSelectedOptionVal(line.DecisionIndex, line.DecisionValues);
+        var allowed = line.PredicateReferences.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                                              .Select(r => r.Trim())
+                                              .ToList();
+
+        // If the predicate references all known options of the decision, it's a common merge point
+        if (allowed.Count > 1 && line.DecisionValues != null && line.DecisionValues.Count > 0 && line.DecisionValues.All(v => allowed.Contains(v)))
+        {
+            return true;
+        }
+
+        return allowed.Contains(selectedVal);
+    }
+
+    private void HandleVnDecisionChoice(int decisionIndex, string val)
+    {
+        SelectDecision(decisionIndex, val);
+        AdvanceNext();
+    }
+
+    private async Task StopAllAudioAsync()
+    {
+        // Invalidate any pending PlayBgmAsync calls (they check this token before playing)
+        _audioToken++;
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                (function() {
+                    try {
+                        var player = document.getElementById('a9-story-bgm-audio');
+                        if (player) {
+                            player.pause();
+                            player.currentTime = 0;
+                            player.removeAttribute('src');
+                            player.removeAttribute('data-curr-src');
+                            player.load();
+                        }
+                    } catch(e) {}
+                    try {
+                        var all = document.querySelectorAll('audio');
+                        all.forEach(function(a) {
+                            try {
+                                a.pause();
+                                a.currentTime = 0;
+                                a.removeAttribute('src');
+                                a.removeAttribute('data-curr-src');
+                                a.load();
+                            } catch(e) {}
+                        });
+                    } catch(e) {}
+                })();
+            ");
+        }
+        catch { }
+    }
+
+    private async Task PlayBgmAsync()
+    {
+        if (Bundle == null || !IsOpen || _isClosing)
+        {
+            await StopAllAudioAsync();
+            return;
+        }
+
+        // LN mode is pure silent reading mode
+        if (CurrentMode == StoryDisplayMode.LightNovel || IsMuted)
+        {
+            await StopAllAudioAsync();
+            return;
+        }
+
+        var targetUrl = CurrentBgmUrl;
+        if (string.IsNullOrEmpty(targetUrl))
+        {
+            await StopAllAudioAsync();
+            return;
+        }
+
+        try
+        {
+            var token = _audioToken;
+            await Task.Delay(20);
+            // Abort if reader was closed / audio stopped while we were waiting
+            if (token != _audioToken || !IsOpen || _isClosing || Bundle == null) return;
+            await JS.InvokeVoidAsync("eval", $@"
+                (function() {{
+                    var player = document.getElementById('a9-story-bgm-audio');
+                    if (!player) {{
+                        player = document.createElement('audio');
+                        player.id = 'a9-story-bgm-audio';
+                        player.loop = true;
+                        document.body.appendChild(player);
+                    }}
+                    player.volume = 0.35;
+                    var target = '{targetUrl}';
+                    if (player.getAttribute('data-curr-src') !== target) {{
+                        player.setAttribute('data-curr-src', target);
+                        player.src = target;
+                        player.load();
+                    }}
+                    var p = player.play();
+                    if (p !== undefined) p.catch(function(err){{}});
+                }})();
+            ");
+        }
+        catch { }
+    }
+
+    private async Task SetMode(StoryDisplayMode mode)
+    {
+        CurrentMode = mode;
+        if (CurrentMode == StoryDisplayMode.LightNovel)
+        {
+            StopAutoPlay();
+            await StopAllAudioAsync();
+        }
+        else
+        {
+            await PlayBgmAsync();
+        }
+    }
+
+    private async Task HandleStageClick()
+    {
+        AdvanceNext();
+        StateHasChanged();
+        await PlayBgmAsync();
+    }
+
+    private void AdvanceNext()
+    {
+        if (Bundle == null || Bundle.Lines.Count == 0) return;
+
+        // If currently stopped on a decision and stage is clicked, default to first option
+        if (CurrentLine?.IsDecision == true && CurrentLine.DecisionOptions.Count > 0)
+        {
+            var defVal = CurrentLine.DecisionValues?.FirstOrDefault() ?? "1";
+            SelectDecision(CurrentLine.DecisionIndex, defVal);
+        }
+
+        while (CurrentIndex < Bundle.Lines.Count - 1)
+        {
+            CurrentIndex++;
+            var nextLine = CurrentLine;
+            if (nextLine != null && ShouldRenderLine(nextLine))
+            {
+                TriggerCurrentLineEffect();
+                _ = PlayBgmAsync();
+                StateHasChanged();
+                return;
+            }
+        }
+
+        StopAutoPlay();
+        StateHasChanged();
+    }
+
+    private void TriggerCurrentLineEffect()
+    {
+        if (CurrentLine?.Effect == StoryVisualEffect.CameraShake)
+        {
+            IsShakeActive = true;
+            _ = Task.Delay(600).ContinueWith(_ =>
+            {
+                IsShakeActive = false;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+    }
+
+    private void ToggleAutoPlay()
+    {
+        IsAutoPlay = !IsAutoPlay;
+        if (IsAutoPlay)
+        {
+            _ = PlayBgmAsync();
+            _autoPlayTimer = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(() =>
+                {
+                    if (CurrentIndex < (Bundle?.Lines.Count ?? 0) - 1)
+                    {
+                        AdvanceNext();
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        StopAutoPlay();
+                    }
+                });
+            }, null, 3200, 3200);
+        }
+        else
+        {
+            StopAutoPlay();
+        }
+    }
+
+    private void StopAutoPlay()
+    {
+        IsAutoPlay = false;
+        _autoPlayTimer?.Dispose();
+        _autoPlayTimer = null;
+        StateHasChanged();
+    }
+
+    private async Task ToggleMute()
+    {
+        IsMuted = !IsMuted;
+        if (!IsMuted)
+        {
+            await PlayBgmAsync();
+        }
+        else
+        {
+            await StopAllAudioAsync();
+        }
+    }
+
+    private void AdjustFontSize(int delta)
+    {
+        LnFontSize = Math.Clamp(LnFontSize + delta, 13, 26);
+    }
+
+    private void CycleLnTheme()
+    {
+        LnTheme = LnTheme switch
+        {
+            "dark" => "sepia",
+            "sepia" => "light",
+            _ => "dark"
+        };
+    }
+
+    private static string GetSpeakerInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "PRTS";
+        try
+        {
+            var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2 && parts[0].Length > 0 && parts[1].Length > 0)
+            {
+                return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+            }
+            string clean = name.Trim();
+            return clean.Length >= 2 ? clean[..2].ToUpperInvariant() : clean.ToUpperInvariant();
+        }
+        catch
+        {
+            return "PRTS";
+        }
+    }
+
+    private async Task Close()
+    {
+        // Block any re-render (OnParametersSetAsync) from restarting BGM while closing
+        _isClosing = true;
+        StopAutoPlay();
+        await StopAllAudioAsync();
+        await SaveReadingSessionAsync();
+        await OnClose.InvokeAsync();
+        await StopAllAudioAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        StopAutoPlay();
+        await StopAllAudioAsync();
+    }
+}
+
+<style>
+    /* PRTS Industrial Styling: Sharp Edges & Tech Borders */
+    .vn-mode-badge,
+    .vn-player-pill,
+    .vn-tool-btn,
+    .vn-decision-choice-btn,
+    .vn-end-btn,
+    .vn-log-box,
+    .wiki-header-card,
+    .wiki-stage-badge,
+    .wiki-characters-showcase,
+    .wiki-character-pill,
+    .wiki-char-thumb,
+    .wiki-char-thumb-fallback,
+    .wiki-summary-box,
+    .wiki-transcript-body,
+    .wiki-speaker-badge,
+    .decision-option-card,
+    .branch-chip-btn,
+    .doctor-branch-selector,
+    .ln-ep-nav-btn,
+    .wiki-cg-illustration img,
+    .wiki-scene-tag,
+    .bgm-cue-btn {
+        border-radius: 2px !important;
+    }
+
+    /* Doctor Decision Styling in Light Novel mode */
+    .doctor-decision-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .doctor-text {
+        font-size: 1.02rem;
+        font-weight: 600;
+        color: #fbbf24 !important;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .theme-sepia .doctor-text {
+        color: #92400e !important;
+    }
+
+    .theme-light .doctor-text {
+        color: #b45309 !important;
+    }
+
+    .doctor-branch-selector {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 6px 12px;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 2px !important;
+    }
+
+    .theme-sepia .doctor-branch-selector {
+        background: rgba(255, 255, 255, 0.7);
+        border-color: #d97706;
+    }
+
+    .theme-light .doctor-branch-selector {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .branch-selector-tag {
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: #f59e0b;
+    }
+
+    .theme-sepia .branch-selector-tag { color: #b45309; }
+    .theme-light .branch-selector-tag { color: #d97706; }
+
+    .branch-selector-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .branch-chip-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #cbd5e1;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 2px !important;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+    }
+
+    .branch-chip-btn:hover {
+        border-color: #f59e0b;
+        color: #fbbf24;
+        background: rgba(245, 158, 11, 0.15);
+    }
+
+    .branch-chip-btn.active {
+        background: rgba(245, 158, 11, 0.25);
+        border-color: #f59e0b;
+        color: #fbbf24;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+    }
+
+    .theme-sepia .branch-chip-btn {
+        background: #fef3c7;
+        border-color: #d97706;
+        color: #78350f;
+    }
+    .theme-sepia .branch-chip-btn.active {
+        background: #f59e0b;
+        color: #ffffff;
+    }
+
+    .theme-light .branch-chip-btn {
+        background: #ffffff;
+        border-color: #cbd5e1;
+        color: #334155;
+    }
+    .theme-light .branch-chip-btn.active {
+        background: #f59e0b;
+        border-color: #d97706;
+        color: #ffffff;
+    }
+
+    .chip-indicator {
+        font-size: 0.68rem;
+        color: #f59e0b;
+    }
+    .branch-chip-btn.active .chip-indicator {
+        color: inherit;
+    }
+
+    /* VN Mode Interactive Doctor Decision Overlay */
+    .vn-decision-overlay {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 100 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        background: rgba(0, 0, 0, 0.65) !important;
+        backdrop-filter: blur(8px) !important;
+        padding: 24px !important;
+    }
+
+    .vn-decision-prompt {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-bottom: 24px !important;
+        color: #f59e0b !important;
+        font-family: var(--font-mono) !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        letter-spacing: 2px !important;
+        text-shadow: 0 0 10px rgba(245, 158, 11, 0.4) !important;
+    }
+
+    .vn-decision-options {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: 680px !important;
+    }
+
+    .vn-decision-choice-btn {
+        background: rgba(15, 23, 42, 0.9) !important;
+        border: 1px solid rgba(245, 158, 11, 0.5) !important;
+        border-left: 5px solid #f59e0b !important;
+        color: #ffffff !important;
+        padding: 16px 24px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+        cursor: pointer !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+        text-align: left !important;
+        border-radius: 2px !important;
+    }
+
+    .vn-decision-choice-btn:hover {
+        background: rgba(245, 158, 11, 0.2) !important;
+        border-color: #fbbf24 !important;
+        transform: translateX(8px) !important;
+        box-shadow: 0 0 25px rgba(245, 158, 11, 0.5) !important;
+        color: #fbbf24 !important;
+    }
+
+    .choice-arrow {
+        color: #f59e0b !important;
+        font-size: 14px !important;
+        transition: transform 0.2s ease !important;
+    }
+
+    .vn-decision-choice-btn:hover .choice-arrow {
+        transform: translateX(4px) !important;
+    }
+
+    .choice-text {
+        flex: 1 !important;
+        line-height: 1.5 !important;
+    }
+</style>

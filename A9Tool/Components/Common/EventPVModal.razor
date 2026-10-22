@@ -1,0 +1,97 @@
+@using Core.Models.Entities
+@inject IJSRuntime JS
+
+@if (IsOpen)
+{
+    <div class="pv-modal-backdrop" @onclick="Close">
+        <div class="pv-modal-container" @onclick:stopPropagation="true">
+            <div class="pv-modal-header">
+                <div class="pv-title-group">
+                    <span class="pv-badge">OFFICIAL TRAILER</span>
+                    <h3 class="pv-title">@Title</h3>
+                </div>
+                <div class="pv-header-actions">
+                    @if (!string.IsNullOrEmpty(DirectWatchUrl))
+                    {
+                        <button class="pv-btn-external" @onclick="OpenExternalBrowser" title="Open directly in external web browser">
+                            ▶ Open on YouTube
+                        </button>
+                    }
+                    <button class="pv-btn-close" @onclick="Close" title="Close Video">✕</button>
+                </div>
+            </div>
+
+            <div class="pv-video-wrapper">
+                @if (!string.IsNullOrEmpty(VideoUrl))
+                {
+                    <iframe src="@VideoUrl"
+                            title="@Title"
+                            frameborder="0"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowfullscreen>
+                    </iframe>
+                }
+
+                <div class="pv-yt-disclaimer">
+                    <span class="pv-disclaimer-text">
+                        💡 If the player shows <em>"Video unavailable"</em> due to YouTube Desktop WebView restrictions, click the button to launch directly in your browser:
+                    </span>
+                    <button class="pv-btn-external-cta" @onclick="OpenExternalBrowser">
+                        🌐 Open in External Browser (Chrome / Edge)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public bool IsVisible { get => IsOpen; set => IsOpen = value; }
+    [Parameter] public string Title { get; set; } = "Official Event PV";
+    [Parameter] public string? VideoUrl { get; set; }
+    [Parameter] public string? YouTubeUrl { get => VideoUrl; set => VideoUrl = value; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? DirectWatchUrl
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(VideoUrl)) return null;
+            var match = System.Text.RegularExpressions.Regex.Match(VideoUrl, @"embed/([^?&]+)");
+            if (match.Success)
+            {
+                return $"https://www.youtube.com/watch?v={match.Groups[1].Value}";
+            }
+            return VideoUrl;
+        }
+    }
+
+    private async Task OpenExternalBrowser()
+    {
+        if (string.IsNullOrEmpty(DirectWatchUrl)) return;
+        try
+        {
+#if WINDOWS
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = DirectWatchUrl,
+                UseShellExecute = true
+            });
+#else
+            await Microsoft.Maui.ApplicationModel.Launcher.Default.OpenAsync(new Uri(DirectWatchUrl));
+#endif
+        }
+        catch
+        {
+            await JS.InvokeVoidAsync("open", DirectWatchUrl, "_blank");
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

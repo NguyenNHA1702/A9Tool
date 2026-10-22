@@ -1,52 +1,13 @@
 @inherits LayoutComponentBase
 
-<div class="app-shell">
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo-mark">AK</div>
-            <span class="logo-text">A9Tool</span>
-        </div>
+<div class="app-shell arknights-shell">
+    <header class="app-header">
+        <PrtsTerminalHeader />
+    </header>
 
-        <nav class="sidebar-nav">
-            <NavLink class="nav-item" href="/" Match="NavLinkMatch.All">
-                <span class="nav-icon">⌂</span> Home
-            </NavLink>
+    <main class="page-content">
+        @Body
+    </main>
 
-            <div class="nav-section">Wiki</div>
-            <NavLink class="nav-item" href="/operators">
-                <span class="nav-icon">◈</span> Operators
-            </NavLink>
-            <NavLink class="nav-item" href="/skills">
-                <span class="nav-icon">◆</span> Skills
-            </NavLink>
-
-            <div class="nav-section">Tools</div>
-            <NavLink class="nav-item" href="/recruitment">
-                <span class="nav-icon">📋</span> Recruitment
-            </NavLink>
-            <NavLink class="nav-item" href="/calculator">
-                <span class="nav-icon">⊞</span> Calculator
-            </NavLink>
-        </nav>
-
-        <div class="sidebar-footer">
-            <NavLink class="nav-item" href="/settings">
-                <span class="nav-icon">⚙</span> Settings
-            </NavLink>
-        </div>
-    </aside>
-
-    <div class="main-area">
-        <header class="app-header">
-            <div class="header-breadcrumb"></div>
-            <div class="header-spacer"></div>
-            <div class="header-actions">
-                <button class="btn-icon" title="Search">⌕</button>
-            </div>
-        </header>
-
-        <main class="page-content">
-            @Body
-        </main>
-    </div>
+    <A9Tool.Components.Common.PrtsLoadingOverlay />
 </div>

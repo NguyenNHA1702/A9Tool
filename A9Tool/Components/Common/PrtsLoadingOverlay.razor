@@ -1,0 +1,45 @@
+@using A9Tool.Services
+@inject LoadingStateService LoadingService
+@implements IDisposable
+
+@if (LoadingService.IsVisible)
+{
+    <div class="prts-fullscreen-loading-overlay">
+        <!-- Arknights Golden Rhombus Spinner -->
+        <div class="rhombus-spinner-wrap">
+            <div class="rhombus-outer-frame"></div>
+            <div class="rhombus-inner-core"></div>
+        </div>
+
+        <div class="loading-title">@LoadingService.Title</div>
+        <div class="loading-subtitle">@LoadingService.SubTitle</div>
+
+        <!-- Laser Progress Bar -->
+        <div class="loading-laser-gauge">
+            <div class="loading-laser-fill" style="width: @(LoadingService.ProgressPercent)%;"></div>
+        </div>
+        <div class="loading-percent-text">
+            SYSTEM OPERATION: <strong>@(LoadingService.ProgressPercent)% COMPLETED</strong>
+        </div>
+
+        <!-- Faint Console Logger -->
+        <div class="faint-console-logger">
+            @foreach (var log in LoadingService.LogLines)
+            {
+                <div class="logger-line">@log</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        LoadingService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        LoadingService.OnChange -= StateHasChanged;
+    }
+}

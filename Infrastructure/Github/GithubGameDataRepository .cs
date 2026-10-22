@@ -392,6 +392,7 @@ namespace Infrastructure.Github
             }
 
             string localpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table.json");
+            string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "character_table_full.json");
 
             var response = await LoadTableAsync<Character>(localpath, "character_table", "character_table.fbs");
 
@@ -401,16 +402,49 @@ namespace Infrastructure.Github
                 return new Dictionary<string, Character>();
             }
 
+            // Fallback: Check character_table_full.json if any subProfessionId is missing
+            Dictionary<string, string>? subProfLookup = null;
+            if (response.Values.Any(v => string.IsNullOrEmpty(v.SubProfessionId)) && File.Exists(fullPath))
+            {
+                try
+                {
+                    var fullJson = await File.ReadAllTextAsync(fullPath, Encoding.UTF8);
+                    using var doc = JsonDocument.Parse(fullJson);
+                    subProfLookup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var prop in doc.RootElement.EnumerateObject())
+                    {
+                        if (prop.Value.TryGetProperty("subProfessionId", out var spProp))
+                        {
+                            var sp = spProp.GetString();
+                            if (!string.IsNullOrEmpty(sp))
+                            {
+                                subProfLookup[prop.Name] = sp;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[GetCharactersAsync] Could not read subProfessionId from character_table_full.json");
+                }
+            }
+
             _logger.LogInformation("[GetCharactersAsync] Fetched total character raw entries: {Count}", response.Count);
 
             var filtered = response
-                .Where(x => x.Key.StartsWith("char_"))
+                .Where(x => x.Key.StartsWith("char_") 
+                         && !string.IsNullOrWhiteSpace(x.Value.Name) 
+                         && x.Value.Name != "???" 
+                         && !x.Value.Name.StartsWith("???"))
                 .ToDictionary(x => x.Key, x => new Character
                 {
                     Id = x.Key,
                     Name = x.Value.Name,
                     Rarity = string.IsNullOrEmpty(x.Value.Rarity) ? "TIER_1" : x.Value.Rarity,
                     Profession = x.Value.Profession,
+                    SubProfessionId = !string.IsNullOrEmpty(x.Value.SubProfessionId) 
+                        ? x.Value.SubProfessionId 
+                        : (subProfLookup != null && subProfLookup.TryGetValue(x.Key, out var sp) ? sp : null),
                     NationId = x.Value.NationId,
                     Position = x.Value.Position,
                     Tags = x.Value.Tags,

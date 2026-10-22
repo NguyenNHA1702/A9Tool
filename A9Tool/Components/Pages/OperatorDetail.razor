@@ -8,6 +8,7 @@
 @inject Core.Services.ImageService ImageService
 @inject Core.Services.LevelingCostService LevelService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @using Microsoft.Extensions.Logging;
 
 @if (op is null)
@@ -33,678 +34,476 @@ else
         <div class="od-vignette"></div>
 
         <nav class="od-topnav">
-            <button class="od-back-btn" @onclick="HandleBack">← Back</button>
+            <button class="od-back-btn" @onclick="HandleBack">
+                <span style="color:#0284c7; margin-right:4px;">◀</span> BACK TO ROSTER
+            </button>
 
-            <!-- --- Top Navigation Tabs (Extensible: Talents, Modules, Story) --- -->
+            <div class="od-top-title">// RHODES ISLAND PRTS // PERSONNEL DIAGNOSTICS & COMBAT PROFILE</div>
+
             <div class="od-tabs">
-                <button class="od-tab active">Info</button>
-                <button class="od-tab">Bio</button>
+                <button class="od-tab active">OPERATOR PROFILE</button>
+                <button class="od-tab" @onclick="OpenOperatorStoryRecord" title="Read Operator Record Story">📖 STORY RECORD</button>
             </div>
         </nav>
 
         <div class="od-content-layer">
-            <!-- --- LEFT PANEL: Attributes & Stats --- -->
-            <aside class="od-panel od-panel-left">
-                <!-- --- Sub-section: Attributes & Promotion --- -->
-                <div class="od-section od-attributes">
-                    <div class="od-section-label">Attributes ▶▶</div>
-                    <!-- --- Sub-section: Elite Selector (E0 / E1 / E2) --- -->
-                    @if (op?.Phases?.Count == 3)
-                    {
-                        <div class="od-elite-selector">
-                            <button class="od-elite-btn @(elite == 0 ? "active" : "")" @onclick="() => OnEliteChanged(0)">E0</button>
-                            <button class="od-elite-btn @(elite == 1 ? "active" : "")" @onclick="() => OnEliteChanged(1)">E1</button>
-                            <button class="od-elite-btn @(elite == 2 ? "active" : "")" @onclick="() => OnEliteChanged(2)">E2</button>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="od-elite-selector">
-                            <button class="od-elite-btn @(elite == 0 ? "active" : "")" @onclick="() => OnEliteChanged(0)">E0</button>
-                            <button class="od-elite-btn @(elite == 1 ? "active" : "")" @onclick="() => OnEliteChanged(1)">E1</button>
-                        </div>
-                    }
 
-                    <!-- Level Slider -->
-                    <div class="od-level-row">
-                        <span class="od-level-label">LV</span>
-                        <input class="od-lv-slider"
-                               type="range"
-                               min="1"
-                               max="@op.Phases[elite].MaxLevel"
-                               @bind="currentLevel" />
-                        <span class="od-lv-value">@currentLevel</span>
-                    </div>
-
-                    <!-- Stat rows -->
+            <!-- ============================================================
+                 LEFT STAGE: IDENTIFICATION & ATTRIBUTES DIAGNOSTIC
+                 ============================================================ -->
+            <aside class="od-stage-left">
+                <!-- Operator Identity Header -->
+                <div class="od-operator-header">
+                    <div class="od-code-label">PERSONNEL FILE // @(op.Id?.ToUpper() ?? "CHAR")</div>
+                    
                     @{
-                        var stats = GetStatsAtTrust(GetRawStat(), selectedTrust);
-                        Logger.LogInformation(
-                    "Current stat for {opName}(Trust: {trust}): E{elite} LV: {level}, MaxHP: {maxHp}, ATK: {atk}, DEF: {def}, RES: {res}, Cost: {cost}, Block: {block}, Redeploy: {redeploy}",
-                        op.Name,
-                        selectedTrust,
-                        elite,
-                        currentLevel,
-                        stats.MaxHp,
-                        stats.Atk,
-                        stats.Def,
-                        stats.MagicResistance,
-                        stats.Cost,
-                        stats.BlockCnt,
-                        stats.RespawnTime);
+                        var stars = op.Rarity switch
+                        {
+                            "TIER_1" => "★",
+                            "TIER_2" => "★★",
+                            "TIER_3" => "★★★",
+                            "TIER_4" => "★★★★",
+                            "TIER_5" => "★★★★★",
+                            "TIER_6" => "★★★★★★",
+                            _ => ""
+                        };
                     }
-                    @{
-                        var hpModBonus = GetModuleBonus("max_hp");
-                        var atkModBonus = GetModuleBonus("atk");
-                        var defModBonus = GetModuleBonus("def");
-                        var resModBonus = GetModuleBonus("magic_resistance");
-                        var costModBonus = GetModuleBonus("cost");
-                        var blockModBonus = GetModuleBonus("block_cnt");
-                        var redeployModBonus = GetModuleBonus("respawn_time");
-                    }
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_hp.png" />
-                        <span>@stats.MaxHp</span>
-                        @if (selectedModuleIndex > 0 && hpModBonus != 0)
+                    <div class="od-stars-strip">@stars</div>
+
+                    <!-- Profession & Sub-Profession Mini Badge Row -->
+                    <div class="od-header-class-pills">
+                        <span class="header-class-chip" title="Class: @FormatProfession(op.Profession)">
+                            <img src="@GetClassIconUrl(op.Profession)" class="chip-icon" alt="" onerror="this.style.display='none'" />
+                            <span>@FormatProfession(op.Profession).ToUpper()</span>
+                        </span>
+                        @if (!string.IsNullOrEmpty(op.SubProfessionId))
                         {
-                            <span class="od-mod-bonus-badge">(@(hpModBonus > 0 ? "+" : "")@hpModBonus)</span>
-                        }
-                    </div>
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_atk.png" />
-                        <span>@stats.Atk</span>
-                        @if (selectedModuleIndex > 0 && atkModBonus != 0)
-                        {
-                            <span class="od-mod-bonus-badge">(@(atkModBonus > 0 ? "+" : "")@atkModBonus)</span>
-                        }
-                    </div>
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_def.png" />
-                        <span>@stats.Def</span>
-                        @if (selectedModuleIndex > 0 && defModBonus != 0)
-                        {
-                            <span class="od-mod-bonus-badge">(@(defModBonus > 0 ? "+" : "")@defModBonus)</span>
-                        }
-                    </div>
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_res.png" />
-                        <span>@stats.MagicResistance</span>
-                        @if (selectedModuleIndex > 0 && resModBonus != 0)
-                        {
-                            <span class="od-mod-bonus-badge">(@(resModBonus > 0 ? "+" : "")@resModBonus)</span>
-                        }
-                    </div>
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_cost.png" />
-                        <span>@stats.Cost</span>
-                        @if (selectedModuleIndex > 0 && costModBonus != 0)
-                        {
-                            <span class="od-mod-bonus-badge">(@(costModBonus > 0 ? "+" : "")@costModBonus)</span>
-                        }
-                    </div>
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_block.png" />
-                        <span>@stats.BlockCnt</span>
-                        @if (selectedModuleIndex > 0 && blockModBonus != 0)
-                        {
-                            <span class="od-mod-bonus-badge">(@(blockModBonus > 0 ? "+" : "")@blockModBonus)</span>
-                        }
-                    </div>
-                    <div class="od-stat-row">
-                        <img src="/assets/icons/characterdetail/icon_time.png" />
-                        <span>@stats.RespawnTime</span>
-                        @if (selectedModuleIndex > 0 && redeployModBonus != 0)
-                        {
-                            <span class="od-mod-bonus-badge">(@(redeployModBonus > 0 ? "+" : "")@redeployModBonus)</span>
+                            <span class="header-class-chip sub" title="Branch: @FormatSubProfession(op.SubProfessionId)">
+                                <img src="@GetSubProfessionIconUrl(op.SubProfessionId)" class="chip-icon" alt="" onerror="this.style.display='none'" />
+                                <span>@FormatSubProfession(op.SubProfessionId)</span>
+                            </span>
                         }
                     </div>
 
-                    <!-- TRUST BONUS SECTION -->
-                    <div class="od-section-label" style="margin-top: 12px;">Trust</div>
-
-                    <div class="od-trust-row">
-                        <div class="od-trust-bar-bg">
-                            <div class="od-trust-bar-fill" style="width: @(selectedTrust / 2.0)%;"></div>
-
-                            <input class="od-trust-slider"
-                                   type="range"
-                                   min="0"
-                                   max="200"
-                                   @bind="selectedTrust"
-                                   @bind:event="oninput" />
+                    <!-- Trust Bar (Click to toggle 0% / 100% / 200%) -->
+                    <div class="trust-gauge-container" title="Click to toggle Trust (0% / 100% / 200%)" @onclick="ToggleTrustLevel">
+                        <span class="trust-title">TRUST</span>
+                        <div class="trust-bar">
+                            <div class="trust-fill" style="width: @(Math.Min(100, selectedTrust / 2))%"></div>
                         </div>
-                        <span class="od-trust-pct">@(selectedTrust)%</span>
+                        <span class="trust-val">@selectedTrust%</span>
                     </div>
 
-                    @{
-                        var trustBonus = GetTrustBonus(selectedTrust);
-                    }
-                    <div class="od-trust-bonus">
-                        @if (trustBonus.MaxHp > 0 || trustBonus.Atk > 0 || trustBonus.Def > 0 || trustBonus.MagicResistance > 0)
+                    <!-- Elite Promotion Selector (E0 / E1 / E2) -->
+                    <div class="od-elite-strip">
+                        <span class="od-elite-strip-lbl">PROMOTION:</span>
+                        @for (int i = 0; i < (op.Phases?.Count ?? 1); i++)
                         {
-                            @if (trustBonus.MaxHp > 0)
-                            {
-                                <span class="od-trust-bonus-item">+@trustBonus.MaxHp HP</span>
-                            }
-                            @if (trustBonus.Atk > 0)
-                            {
-                                <span class="od-trust-bonus-item">+@trustBonus.Atk ATK</span>
-                            }
-                            @if (trustBonus.Def > 0)
-                            {
-                                <span class="od-trust-bonus-item">+@trustBonus.Def DEF</span>
-                            }
-                            @if (trustBonus.MagicResistance > 0)
-                            {
-                                <span class="od-trust-bonus-item">+@trustBonus.MagicResistance RES</span>
-                            }
-                        }
-                        else
-                        {
-                            <span style="opacity: 0.6;">No Trust Bonus</span>
+                            var eIndex = i;
+                            <button class="od-elite-chip @(elite == eIndex ? "active" : "")"
+                                    @onclick="() => OnEliteChanged(eIndex)">
+                                E@(eIndex)
+                            </button>
                         }
                     </div>
                 </div>
 
-                <!-- STAR RATING -->
+                <!-- Attributes Diagnostic Box (Sắc Cạnh Chuẩn Game Arknights) -->
                 @{
-                    var stars = op.Rarity switch
-                    {
-                        "TIER_1" => "★",
-                        "TIER_2" => "★★",
-                        "TIER_3" => "★★★",
-                        "TIER_4" => "★★★★",
-                        "TIER_5" => "★★★★★",
-                        "TIER_6" => "★★★★★★",
-                        _ => ""
-                    };
+                    var stats = GetStatsAtTrust(GetRawStat(), selectedTrust);
+                    var hpModBonus = GetModuleBonus("max_hp");
+                    var atkModBonus = GetModuleBonus("atk");
+                    var defModBonus = GetModuleBonus("def");
+                    var resModBonus = GetModuleBonus("magic_resistance");
+                    var costModBonus = GetModuleBonus("cost");
+                    var blockModBonus = GetModuleBonus("block_cnt");
+                    var redeployModBonus = GetModuleBonus("respawn_time");
                 }
-
-                <div class="od-stars">@stars</div>
-            </aside>
-
-            <div class="od-center-info">
-                <div class="od-op-name-block">
-                    <img class="od-op-class-mini" src="@GetClassIconUrl(op.Profession)" />
-                    <h1 class="od-op-name">@op.Name</h1>
-
-                    <!-- SubProf + Position + Tags -->
-                    <div class="od-op-meta">
-                        <img class="od-subprof-icon" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png" />
-                        <span class="od-position-badge">@op.Position</span>  <!-- bind: op.Position -->
-                        <span class="od-class-badge">@FormatProfession(op.Profession)</span>     <!-- bind: FormatProfession -->
+                <div class="attributes-diagnostic-box">
+                    <div class="attr-box-header">
+                        <span>ATTRIBUTES DIAGNOSTIC //</span>
+                        <span style="color:#0284c7;">DIAG_OK</span>
                     </div>
 
-                    <!-- Description -->
-                    <p class="od-op-desc">@CleanDescription(op.Description)</p>
+                    <div class="attr-grid">
+                        <div class="attr-item" title="Max HP">
+                            <span class="attr-lbl">➕ HP:</span>
+                            <span class="attr-val">@stats.MaxHp @(hpModBonus != 0 ? $"({(hpModBonus > 0 ? "+" : "")}{hpModBonus})" : "")</span>
+                        </div>
+                        <div class="attr-item" title="ATK (Attack)">
+                            <span class="attr-lbl">⚔️ ATK:</span>
+                            <span class="attr-val">@stats.Atk @(atkModBonus != 0 ? $"({(atkModBonus > 0 ? "+" : "")}{atkModBonus})" : "")</span>
+                        </div>
+                        <div class="attr-item" title="DEF (Defense)">
+                            <span class="attr-lbl">🛡️ DEF:</span>
+                            <span class="attr-val">@stats.Def @(defModBonus != 0 ? $"({(defModBonus > 0 ? "+" : "")}{defModBonus})" : "")</span>
+                        </div>
+                        <div class="attr-item" title="RES (Arts Resistance)">
+                            <span class="attr-lbl">✨ RES:</span>
+                            <span class="attr-val">@stats.MagicResistance @(resModBonus != 0 ? $"({(resModBonus > 0 ? "+" : "")}{resModBonus})" : "")</span>
+                        </div>
+                        <div class="attr-item" title="Cost (Deployment)">
+                            <span class="attr-lbl">🪙 COST:</span>
+                            <span class="attr-val">@stats.Cost @(costModBonus != 0 ? $"({(costModBonus > 0 ? "+" : "")}{costModBonus})" : "")</span>
+                        </div>
+                        <div class="attr-item" title="Block Count">
+                            <span class="attr-lbl">🧱 BLOCK:</span>
+                            <span class="attr-val">@stats.BlockCnt @(blockModBonus != 0 ? $"({(blockModBonus > 0 ? "+" : "")}{blockModBonus})" : "")</span>
+                        </div>
+                        <div class="attr-item" title="Redeployment Time">
+                            <span class="attr-lbl">⌛ TIME:</span>
+                            <span class="attr-val">@(stats.RespawnTime)s</span>
+                        </div>
+                        <div class="attr-item" title="Attack Speed">
+                            <span class="attr-lbl">🎯 ATK SPD:</span>
+                            <span class="attr-val">Normal</span>
+                        </div>
+                    </div>
 
-                    <!-- Tags -->
-                    @if (op.Tags != null && op.Tags.Count > 0)
+                    <!-- Trait / Class Description (Kept in left attributes panel) -->
+                    @if (!string.IsNullOrEmpty(op.Description))
                     {
-                        <div class="od-tag-list">
-                            @foreach (var tag in op.Tags)
-                            {
-                                <span class="od-tag">@tag</span>
-                            }
+                        <div class="od-trait-text">
+                            <span class="trait-tag">[TRAIT]</span> @CleanDescription(op.Description)
                         </div>
                     }
 
-                    @if (activeRangeData != null)
+                    <!-- Attack Range Matrix (Kept in left attributes panel) -->
+                    @if (activeRangeData != null && activeRangeMatrix != null)
                     {
-                        <!-- ATK range -->
-                        <div class="od-attack-range">
-                            <!-- Header -->
+                        <div class="od-range-wrapper">
                             <div class="od-range-header">
-                                <span class="od-range-title">Range</span>
-                                <span class="od-range-id-badge">@activeRangeData.Id</span>
+                                <span class="od-range-lbl">ATTACK RANGE // @activeRangeData.Id</span>
                             </div>
-
                             <div class="od-range-grid-container"
-                                 style="grid-template-columns: repeat(@activeRangeMatrix?.ColumnCount, 16px);
-                                grid-template-rows: repeat(@activeRangeMatrix?.RowCount, 16px);">
-                                @for (int r = 0; r < activeRangeMatrix?.RowCount; r++)
+                                 style="grid-template-columns: repeat(@activeRangeMatrix.ColumnCount, 14px);
+                                        grid-template-rows: repeat(@activeRangeMatrix.RowCount, 14px);">
+                                @for (int r = 0; r < activeRangeMatrix.RowCount; r++)
                                 {
                                     @for (int c = 0; c < activeRangeMatrix.ColumnCount; c++)
                                     {
                                         var cellType = activeRangeMatrix.GetCellType(r, c);
-                                        <div class="od-range-tile @cellType" title="[@activeRangeMatrix.GetRowCoord(r), @activeRangeMatrix.GetColCoord(c)]">
-                                        </div>
+                                        <div class="od-range-tile @cellType" title="[@activeRangeMatrix.GetRowCoord(r), @activeRangeMatrix.GetColCoord(c)]"></div>
                                     }
                                 }
                             </div>
                         </div>
                     }
+                </div>
+            </aside>
 
+            <!-- Center Stage: Splash Art Showcase + Bottom-Left Operator Identity Overlay -->
+            <div class="od-stage-center">
+                <div class="od-hero-overlay">
+                    <div class="od-hero-accent">
+                        @if (!string.IsNullOrEmpty(op.SubProfessionId))
+                        {
+                            <img src="@GetSubProfessionIconUrl(op.SubProfessionId)" class="hero-emblem-icon" alt="" onerror="this.style.display='none'" />
+                        }
+                        else
+                        {
+                            <img src="@GetClassIconUrl(op.Profession)" class="hero-emblem-icon" alt="" onerror="this.style.display='none'" />
+                        }
+                        <span class="od-hero-code">FILE // @(op.Id?.ToUpper() ?? "OPERATOR")</span>
+                    </div>
+                    <h1 class="od-hero-name">@op.Name</h1>
+                    <div class="od-hero-tags">
+                        @if (!string.IsNullOrEmpty(op.Position))
+                        {
+                            <span class="od-hero-tag">@op.Position</span>
+                        }
+                        <span class="od-hero-tag has-icon">
+                            <img src="@GetClassIconUrl(op.Profession)" class="hero-tag-img" alt="" onerror="this.style.display='none'" />
+                            <span>@FormatProfession(op.Profession)</span>
+                        </span>
+                        @if (!string.IsNullOrEmpty(op.SubProfessionId))
+                        {
+                            <span class="od-hero-tag highlight has-icon">
+                                <img src="@GetSubProfessionIconUrl(op.SubProfessionId)" class="hero-tag-img" alt="" onerror="this.style.display='none'" />
+                                <span>@FormatSubProfession(op.SubProfessionId)</span>
+                            </span>
+                        }
+                    </div>
                 </div>
             </div>
 
-            <!-- --- RIGHT PANEL: Elite, Potential, Skills, Talents & Modules --- -->
-            <aside class="od-panel od-panel-right">
+            <!-- ============================================================
+                 RIGHT STAGE: COMBAT, SKILLS, MODULES & TALENTS
+                 ============================================================ -->
+            <aside class="od-stage-right">
+                <!-- Level & Promote Strip -->
+                <div class="level-promote-strip">
+                    <div>
+                        <div class="level-sub-label">// CURRENT LEVEL & RANK</div>
+                        <div class="level-big-val">
+                            LV @currentLevel <span class="level-max-val">/ @(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)</span>
+                        </div>
+                    </div>
+                    <div class="promote-actions-group">
+                        <button class="promote-btn-tag" @onclick="() => showLevelModal = true">
+                            <span>🔱</span> PROMOTE @(elite == (op.Phases?.Count ?? 1) - 1 ? "MAX" : $"E{elite}")
+                        </button>
+                    </div>
+                </div>
 
-                <!-- --- Sub-section: Elite & Potential Header --- -->
-                <div class="od-ep-card">
-                    <div class="od-ep-top">
-                        <!-- Level Circle Badge; opens Level Selection Modal on click -->
-                        <div class="od-level-circle clickable" @onclick="() => showLevelModal = true" title="Click to Change Level & Elite">
-                            <div class="od-circle-main">
-                                <span class="od-circle-lv">LV</span>
-                                <span class="od-circle-num">@currentLevel</span>
-                            </div>
-                            <span class="od-circle-max">/@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)</span>
-                            @if (currentLevel >= (op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1))
+                <!-- Level Slider & Quick Adjust -->
+                <div class="level-slider-strip">
+                    <span class="slider-hint">Lv:</span>
+                    <input class="od-lv-slider"
+                           type="range"
+                           min="1"
+                           max="@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)"
+                           @bind="currentLevel"
+                           @bind:event="oninput"
+                           @onchange="SaveState" />
+                    <button class="od-change-lv-btn" @onclick="() => showLevelModal = true">⚙ Adjust</button>
+                </div>
+
+                <!-- Potential Selector (6 Pips) -->
+                <div class="potential-pips-strip">
+                    <span class="pot-label">POTENTIAL:</span>
+                    <div class="pot-pips-row">
+                        @for (int p = 0; p < 6; p++)
+                        {
+                            var potIndex = p;
+                            <button class="pot-pip-btn @(selectedPotential >= potIndex ? "active" : "")"
+                                    @onclick="() => selectedPotential = potIndex"
+                                    title="Potential @(potIndex + 1)">
+                                P@(potIndex + 1)
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- COMBAT SKILLS -->
+                <div class="od-skills-section">
+                    <div class="section-tactical-title">
+                        <span>COMBAT SKILLS //</span>
+                        <span class="section-sub-hint">Click skill to inspect</span>
+                    </div>
+
+                    @if (skills != null && skills.Count > 0)
+                    {
+                        <div class="skills-canvas-strip">
+                            @for (int s = 0; s < skills.Count; s++)
                             {
-                                <span class="od-circle-max-badge">MAX</span>
+                                var sIdx = s;
+                                var skillObj = skills[s];
+                                var isSelected = selectedSkill == sIdx;
+                                <div class="skill-card-block @(isSelected ? "selected-skill" : "")"
+                                     @onclick="() => SelectSkill(sIdx)">
+                                    <img src="@GetSkillImageUrl(skillObj.IconId ?? skillObj.SkillId)"
+                                         class="skill-icon-img"
+                                         alt="Skill" />
+                                    <div class="skill-name-sm">Skill @(sIdx + 1)</div>
+                                    @if (isSelected)
+                                    {
+                                        <div class="skill-selected-badge">ACTIVE ✓</div>
+                                    }
+                                </div>
                             }
                         </div>
 
-                        <!-- Promote MAX & Potential+ Badge Buttons -->
-                        <div class="od-ep-actions">
-                            <!-- Promote/Elite Icon Picker -->
-                            <div class="od-ep-action-box">
-                                <div class="od-elite-icons">
-                                    @for (int i = 0; i < (op.Phases?.Count ?? 1); i++)
+                        <!-- Active Skill Detailed View -->
+                        @if (CurrentSkill != null)
+                        {
+                            <div class="skill-expanded-card">
+                                <div class="skill-card-title-row">
+                                    <div class="skill-card-name">@CurrentSkillLevel?.Name</div>
+                                    <button class="skill-detail-open-btn" @onclick="OpenSkillUpgradeModal">View Materials 🔎</button>
+                                </div>
+
+                                <div class="skill-badge-tags">
+                                    <span class="skill-sp-cost">
+                                        ⚡ SP: @(CurrentSkillLevel?.InitSp ?? 0) / @(CurrentSkillLevel?.SpCost ?? 0)
+                                    </span>
+                                    @if ((CurrentSkillLevel?.Duration ?? 0) > 0)
                                     {
-                                        var eIndex = i;
-                                        <button class="od-elite-icon-btn @(elite == eIndex ? "active" : "")"
-                                                @onclick="() => OnEliteChanged(eIndex)"
-                                                title="Elite @eIndex">
-                                            <img src="https://raw.githubusercontent.com/Aceship/Arknight-Images/main/ui/elite/@(eIndex).png" alt="E@eIndex" onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'" />
+                                        <span class="skill-badge-tag duration">
+                                            ⏱ @(CurrentSkillLevel?.Duration)s
+                                        </span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(CurrentSkillLevel?.RangeId))
+                                    {
+                                        <span class="skill-badge-tag duration">
+                                            Range: @CurrentSkillLevel.RangeId
+                                        </span>
+                                    }
+                                </div>
+
+                                <p class="skill-desc-body">
+                                    @CleanDescription(CurrentSkillLevel?.Description)
+                                </p>
+
+                                <!-- Skill Level Dots Selector -->
+                                @if (CurrentSkill.Levels != null && CurrentSkill.Levels.Count > 0)
+                                {
+                                    <div class="skill-dots-strip">
+                                        <span class="dots-label">LEVEL / MASTERY:</span>
+                                        <div class="dots-list">
+                                            @for (int l = 0; l < CurrentSkill.Levels.Count; l++)
+                                            {
+                                                var lvl = l;
+                                                var isM = lvl >= 7;
+                                                <button class="skill-lvl-pip @(isM ? "mastery" : "") @(selectedSkillLevel == lvl ? "active" : "")"
+                                                        @onclick="() => OnSkillLevelChanged(lvl)">
+                                                    @(isM ? $"M{lvl - 6}" : $"{lvl + 1}")
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="no-item-hint">No Combat Skills Registered</div>
+                    }
+                </div>
+
+                <!-- TACTICAL MODULE -->
+                <div class="od-module-section">
+                    <div class="section-tactical-title">
+                        <span>TACTICAL MODULE //</span>
+                        <span class="section-sub-hint">Branch Equipment</span>
+                    </div>
+
+                    <div class="module-slot-block">
+                        <!-- Slot Selector -->
+                        <div class="module-slots-row">
+                            <button class="mod-slot-btn @(selectedModuleIndex == 0 ? "active" : "")"
+                                    @onclick="() => OnModuleSelected(0)">
+                                ORIGINAL
+                            </button>
+                            @if (modules != null && modules.Count > 0)
+                            {
+                                @for (int m = 0; m < modules.Count; m++)
+                                {
+                                    var mIdx = m + 1;
+                                    var mod = modules[m];
+                                    <button class="mod-slot-btn @(selectedModuleIndex == mIdx ? "active" : "")"
+                                            @onclick="() => OnModuleSelected(mIdx)">
+                                        <A9Tool.Components.Common.LazyImage
+                                            Src="@GetModuleTypeIconUrl(mod)"
+                                            Category="modules"
+                                            Class="mod-slot-icon"
+                                            Alt="@mod.UniEquipName" />
+                                        <span>@(mod.TypeName1 ?? "MOD")</span>
+                                    </button>
+                                }
+                            }
+                        </div>
+
+                        <!-- Module Info -->
+                        <div class="mod-info-subcard">
+                            <div class="mod-info-header">
+                                <div class="mod-header-left">
+                                    <img src="@GetModuleIconUrl(CurrentModule)" 
+                                         class="mod-big-icon clickable" 
+                                         alt="@(CurrentModule?.UniEquipName ?? "Module")" 
+                                         title="Click to view module detail dossier"
+                                         onerror="this.onerror=null;this.src='/assets/icons/characterdetail/back_round.png'"
+                                         @onclick="OpenModuleStatModal" />
+                                    <div>
+                                        <div class="mod-card-name">@(CurrentModule != null ? CurrentModule.UniEquipName : $"{op.Name}'s Standard Equipment")</div>
+                                        <div class="mod-card-type">
+                                            Class: @FormatSubProfession(op.SubProfessionId)
+                                            @(CurrentModule != null && !string.IsNullOrEmpty(CurrentModule.TypeName1) ? $" • {CurrentModule.TypeName1}" : "")
+                                        </div>
+                                    </div>
+                                </div>
+                                @if (CurrentModule != null)
+                                {
+                                    <button class="mod-detail-open-btn" @onclick="OpenModuleStatModal">Manage Details ▾</button>
+                                }
+                            </div>
+
+                            @if (CurrentModule != null && currentModuleBattleEquip?.Phases != null && currentModuleBattleEquip.Phases.Count > 0)
+                            {
+                                <!-- Stage Selector Pills (Stage 1, 2, 3) -->
+                                <div class="mod-stage-pills-row">
+                                    @for (int s = 0; s < currentModuleBattleEquip.Phases.Count; s++)
+                                    {
+                                        var stageNum = s + 1;
+                                        <button class="mod-stage-pill @(selectedModuleStage == stageNum ? "active" : "")"
+                                                @onclick="() => selectedModuleStage = stageNum">
+                                            STAGE @stageNum
                                         </button>
                                     }
                                 </div>
-                                <span class="od-ep-label">Promote @(elite == (op.Phases?.Count ?? 1) - 1 ? "MAX" : $"E{elite}")</span>
-                            </div>
 
-                            <!-- Potential Selector -->
-                            <div class="od-ep-action-box">
-                                <div class="od-potential-dots">
-                                    @for (int p = 0; p < 6; p++)
+                                <!-- Stage Stats & Trait / Talent Preview for Selected Stage -->
+                                var activePhaseIdx = Math.Clamp(selectedModuleStage > 0 ? selectedModuleStage - 1 : 0, 0, currentModuleBattleEquip.Phases.Count - 1);
+                                var activePhase = currentModuleBattleEquip.Phases[activePhaseIdx];
+                                var sideTrait = activePhase.Parts?.FirstOrDefault(p => p.OverrideTraitDataBundle?.Candidates != null)
+                                                                 ?.OverrideTraitDataBundle?.Candidates?.FirstOrDefault();
+                                var sideTalent = activePhase.Parts?.FirstOrDefault(p => p.AddOrOverrideTalentDataBundle?.Candidates != null)
+                                                                  ?.AddOrOverrideTalentDataBundle?.Candidates?.FirstOrDefault();
+                                var sideStats = activePhase.AttributeBlackboard;
+
+                                <div class="mod-stage-summary-box">
+                                    @if (sideTrait != null && (!string.IsNullOrEmpty(sideTrait.OverrideDescripton) || !string.IsNullOrEmpty(sideTrait.AdditionalDescription)))
                                     {
-                                        var potIndex = p;
-                                        <span class="od-pot-dot @(selectedPotential >= potIndex ? "active" : "")"
-                                              @onclick="() => selectedPotential = potIndex"
-                                              title="Potential @(potIndex + 1)"></span>
+                                        <div class="mod-mini-feature trait">
+                                            <span class="mod-mini-tag trait">TRAIT UPDATE</span>
+                                            <p class="mod-mini-text">@CleanDescription(!string.IsNullOrEmpty(sideTrait.OverrideDescripton) ? sideTrait.OverrideDescripton : sideTrait.AdditionalDescription)</p>
+                                        </div>
+                                    }
+                                    @if (sideTalent != null && (!string.IsNullOrEmpty(sideTalent.UpgradeDescription) || !string.IsNullOrEmpty(sideTalent.Description)))
+                                    {
+                                        <div class="mod-mini-feature talent">
+                                            <span class="mod-mini-tag talent">TALENT IMPROVEMENT: @(!string.IsNullOrEmpty(sideTalent.Name) ? sideTalent.Name : "Talent")</span>
+                                            <p class="mod-mini-text">@CleanDescription(!string.IsNullOrEmpty(sideTalent.UpgradeDescription) ? sideTalent.UpgradeDescription : sideTalent.Description)</p>
+                                        </div>
+                                    }
+                                    @if (sideStats != null && sideStats.Any(b => b.Value.HasValue && b.Value.Value != 0))
+                                    {
+                                        <div class="mod-mini-attr-row">
+                                            @foreach (var bb in sideStats.Where(b => b.Value.HasValue && b.Value.Value != 0))
+                                            {
+                                                <span class="mod-mini-attr-chip">
+                                                    @FormatStatKey(bb.Key): <b>@FormatStatValue(bb)</b>
+                                                </span>
+                                            }
+                                        </div>
                                     }
                                 </div>
-                                <span class="od-ep-label">Potential +</span>
-                            </div>
+                            }
                         </div>
-                    </div>
-
-                    <!-- Interactive Quick Level Slider Bar -->
-                    <div class="od-level-quick-row">
-                        <span class="od-quick-lv-text">Select Lv:</span>
-                        <input class="od-lv-slider"
-                               type="range"
-                               min="1"
-                               max="@(op.Phases?[Math.Min(elite, op.Phases.Count - 1)]?.MaxLevel ?? 1)"
-                               @bind="currentLevel"
-                               @bind:event="oninput"
-                               @onchange="SaveState" />
-                        <button class="od-quick-lv-btn" @onclick="() => showLevelModal = true">Change Level ⚙️</button>
                     </div>
                 </div>
 
-                <!-- DRAWER 1: SKILL SECTION -->
-                <div class="od-drawer-card @(activeDrawer == DrawerState.SkillExpanded ? "expanded" : "collapsed")">
-                    <!-- Drawer Header -->
-                    <div class="od-drawer-header" @onclick="ToggleSkillDrawer">
-                        <div class="od-drawer-title">
-                            <span class="od-drawer-arrow">▲</span>
-                            <span>Skill</span>
+                <!-- COMBAT TALENTS -->
+                @if (op.Talents != null && op.Talents.Count > 0)
+                {
+                    <div class="od-talents-section">
+                        <div class="section-tactical-title">
+                            <span>COMBAT TALENTS //</span>
                         </div>
-                        <button class="od-drawer-search-btn" @onclick:stopPropagation="true" @onclick="ToggleSkillDrawer" title="Skill Detail Range Search">🔍</button>
-                    </div>
-
-                    @if (activeDrawer == DrawerState.SkillExpanded)
-                    {
-                        <!-- EXPANDED SKILL VIEW (Image 2) -->
-                        <div class="od-drawer-body">
-                            @if (skills != null && skills.Count > 0)
+                        <div class="talents-grid">
+                            @foreach (var talent in op.Talents)
                             {
-                                <!-- Skill Tab Icons Grid -->
-                                <div class="od-skill-tabs-expanded">
-                                    @for (int i = 0; i < skills.Count; i++)
-                                    {
-                                        var sIdx = i;
-                                        var sk = skills[sIdx];
-                                        var firstLvl = sk.Levels?.FirstOrDefault();
-                                        <div class="od-skill-tab-item @(selectedSkill == sIdx ? "active" : "")"
-                                             @onclick="() => SelectSkill(sIdx)">
-                                            <A9Tool.Components.Common.LazyImage
-                                                Class="od-skill-tab-img"
-                                                Src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)"
-                                                Category="skills"
-                                                Alt="@($"Skill {sIdx + 1}")" />
-                                            @if (selectedSkill == sIdx)
-                                            {
-                                                <span class="od-skill-check">✓</span>
-                                            }
-                                            @if (firstLvl != null)
-                                            {
-                                                <div class="od-skill-sp-sub">▶@firstLvl.InitSp ⚡@firstLvl.SpCost</div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-
-                                <!-- Selected Skill Details Card -->
-                                @if (CurrentSkillLevel != null && CurrentSkill != null)
+                                var candidate = GetActiveTalentCandidate(talent);
+                                if (candidate != null && (!string.IsNullOrEmpty(candidate.Name) || !string.IsNullOrEmpty(candidate.Description)))
                                 {
-                                    <div class="od-skill-expanded-card">
-                                        <div class="od-skill-expanded-header">
-                                            <h3 class="od-skill-name-lg">@CurrentSkillLevel.Name</h3>
+                                    <div class="talent-card">
+                                        <div class="talent-card-header">
+                                            <span class="talent-pill">TALENT</span>
+                                            <span class="talent-name">@candidate.Name</span>
                                         </div>
-
-                                        <!-- Badges Row: Auto Recovery / Manual / Duration / Range -->
-                                        <div class="od-skill-badges-row">
-                                            <span class="od-badge auto-recovery">Auto Recovery</span>
-                                            <span class="od-badge manual">Manual</span>
-                                            @if (CurrentSkillLevel.Duration > 0)
-                                            {
-                                                <span class="od-badge duration">⏱ @(CurrentSkillLevel.Duration) sec</span>
-                                            }
-                                            @if (!string.IsNullOrEmpty(CurrentSkillLevel.RangeId))
-                                            {
-                                                <button class="od-badge range-btn">🔍 Range</button>
-                                            }
-                                        </div>
-
-                                        <!-- Description -->
-                                        <p class="od-skill-desc-text">
-                                            @CleanDescription(CurrentSkillLevel.Description)
-                                        </p>
-
-                                        <!-- Skill Range Grid Display -->
-                                        @if (activeSkillRangeMatrix != null && activeSkillRangeData != null)
-                                        {
-                                            <div class="od-attack-range od-skill-attack-range" style="margin-top: 8px;">
-                                                <div class="od-range-header">
-                                                    <span class="od-range-title">Skill Range</span>
-                                                    <span class="od-range-id-badge">@activeSkillRangeData.Id</span>
-                                                </div>
-                                                <div class="od-range-grid-container"
-                                                     style="grid-template-columns: repeat(@activeSkillRangeMatrix.ColumnCount, 16px);
-                                                    grid-template-rows: repeat(@activeSkillRangeMatrix.RowCount, 16px);">
-                                                    @for (int r = 0; r < activeSkillRangeMatrix.RowCount; r++)
-                                                    {
-                                                        @for (int c = 0; c < activeSkillRangeMatrix.ColumnCount; c++)
-                                                        {
-                                                            var cellType = activeSkillRangeMatrix.GetCellType(r, c);
-                                                            <div class="od-range-tile @cellType" title="[@activeSkillRangeMatrix.GetRowCoord(r), @activeSkillRangeMatrix.GetColCoord(c)]">
-                                                            </div>
-                                                        }
-                                                    }
-                                                </div>
-                                            </div>
-                                        }
-
-                                        <!-- Skill Footer Action Row -->
-                                        <div class="od-skill-footer-row">
-                                            <span class="od-default-skill-badge">Default Skill</span>
-                                            <div class="od-rank-specialize-group">
-                                                <span class="od-rank-badge">RANK <b>@(selectedSkillLevel + 1)</b></span>
-                                                <button class="od-specialize-btn" @onclick="OpenSkillUpgradeModal">🔺 Upgrade Materials</button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Skill Level Dots Selector (1-7, M1-3) -->
-                                        <div class="od-skill-level-row">
-                                            <span class="od-skill-level-label">Lv</span>
-                                            <div class="od-skill-lvl-dots">
-                                                @for (int l = 0; l < Math.Min(7, CurrentSkill.Levels.Count); l++)
-                                                {
-                                                    var lvlIdx = l;
-                                                    <span class="od-lvl-dot @(selectedSkillLevel == lvlIdx ? "active" : "")"
-                                                          @onclick="() => OnSkillLevelChanged(lvlIdx)">@(lvlIdx + 1)</span>
-                                                }
-                                                @if (CurrentSkill.Levels.Count > 7)
-                                                {
-                                                    <span class="od-lvl-separator"></span>
-                                                    @for (int m = 7; m < CurrentSkill.Levels.Count; m++)
-                                                    {
-                                                        var mIdx = m;
-                                                        var mNum = m - 6;
-                                                        <span class="od-lvl-dot mastery @(selectedSkillLevel == mIdx ? "active" : "")"
-                                                              @onclick="() => OnSkillLevelChanged(mIdx)">M@(mNum)</span>
-                                                    }
-                                                }
-                                            </div>
-                                        </div>
+                                        <p class="talent-desc">@CleanDescription(candidate.Description)</p>
                                     </div>
                                 }
                             }
-                        </div>
-                    }
-                    else
-                    {
-                        <!-- COLLAPSED SKILL VIEW (Image 1) -->
-                        <div class="od-drawer-body-collapsed" @onclick="ToggleSkillDrawer">
-                            @if (skills != null && skills.Count > 0)
-                            {
-                                <div class="od-skill-summary-row">
-                                    <div class="od-skill-summary-icons">
-                                        @for (int i = 0; i < skills.Count; i++)
-                                        {
-                                            var sIdx = i;
-                                            var sk = skills[sIdx];
-                                            var firstLvl = sk.Levels?.FirstOrDefault();
-                                            <div class="od-skill-summary-item @(selectedSkill == sIdx ? "active" : "")">
-                                                <A9Tool.Components.Common.LazyImage
-                                                    Src="@GetSkillImageUrl(sk.IconId ?? sk.SkillId)"
-                                                    Category="skills"
-                                                    Alt="@($"Skill {sIdx + 1}")" />
-                                                @if (selectedSkill == sIdx)
-                                                {
-                                                    <span class="od-skill-check">✓</span>
-                                                }
-                                                @if (firstLvl != null)
-                                                {
-                                                    <div class="od-skill-sp-sub">▶@firstLvl.InitSp ⚡@firstLvl.SpCost</div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                    <div class="od-skill-summary-meta">
-                                        <span class="od-summary-rank">RANK <b>@(selectedSkillLevel + 1)</b></span>
-                                        <span class="od-summary-specialize">Specialize 🔺</span>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-
-                <!-- DRAWER 2: BRANCH / TALENT / MODULE SECTION -->
-                <div class="od-drawer-card @(activeDrawer == DrawerState.ModuleExpanded ? "expanded" : "collapsed")">
-                    <!-- Drawer Header -->
-                    <div class="od-drawer-header" @onclick="ToggleModuleDrawer">
-                        <div class="od-drawer-title">
-                            <span class="od-drawer-arrow">▲</span>
-                            <span>Branch+</span>
                         </div>
                     </div>
-
-                    @if (activeDrawer == DrawerState.ModuleExpanded)
-                    {
-                        <!-- EXPANDED MODULE VIEW (Image 3) -->
-                        <div class="od-drawer-body">
-                            <!-- Subprofession / Branch Header -->
-                            <div class="od-branch-header">
-                                <img class="od-subprof-icon-lg" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png" />
-                                <h3 class="od-branch-title-text">@FormatSubProfession(op.SubProfessionId)</h3>
-                            </div>
-
-                            <!-- Module Selection Row (Wiki Mode) -->
-                            <div class="od-module-block">
-                                <span class="od-block-label">Module</span>
-                                <div class="od-module-slots-row">
-                                    <!-- ORIGINAL Base Module -->
-                                    <div class="od-mod-slot-box @(selectedModuleIndex == 0 ? "active" : "")"
-                                         @onclick="() => OnModuleSelected(0)">
-                                        <span class="od-mod-slot-badge">ORIGINAL</span>
-                                        @if (selectedModuleIndex == 0)
-                                        {
-                                            <span class="od-mod-check">✓</span>
-                                        }
-                                    </div>
-
-                                    <!-- Operator Custom Modules -->
-                                    @if (modules != null && modules.Count > 0)
-                                    {
-                                        @for (int m = 0; m < modules.Count; m++)
-                                        {
-                                            var mIdx = m + 1;
-                                            var mod = modules[m];
-                                            <div class="od-mod-slot-box @(selectedModuleIndex == mIdx ? "active" : "")"
-                                                 @onclick="() => OnModuleSelected(mIdx)"
-                                                 title="@mod.TypeName1">
-                                                <!-- Module type icon cached via ImageService -->
-                                                <A9Tool.Components.Common.LazyImage
-                                                    Class="od-mod-slot-img"
-                                                    Src="@GetModuleTypeIconUrl(mod)"
-                                                    Category="modules"
-                                                    Alt="@mod.UniEquipName" />
-                                                @if (selectedModuleIndex == mIdx)
-                                                {
-                                                    <span class="od-mod-check">✓</span>
-                                                }
-                                            </div>
-                                        }
-                                    }
-                                </div>
-
-                                <!-- Selected Module Name & Details -->
-                                <div class="od-mod-info-card">
-                                    <span class="od-mod-title">@(CurrentModule != null ? CurrentModule.UniEquipName : $"{op.Name}'s Badge")</span>
-                                    @if (CurrentModule != null && (!string.IsNullOrEmpty(CurrentModule.TypeName1) || !string.IsNullOrEmpty(CurrentModule.TypeName2)))
-                                    {
-                                        <div style="margin: 4px 0 6px 0;">
-                                            <span class="od-mod-type-chip">@CurrentModule.TypeName1@(!string.IsNullOrEmpty(CurrentModule.TypeName2) ? "-" + CurrentModule.TypeName2 : "")</span>
-                                        </div>
-                                    }
-                                    <p class="od-mod-desc">@(CurrentModule != null ? CurrentModule.UniEquipDesc : "Default Module")</p>
-
-                                    <!-- Per-Stage Stat detail (from BattleEquipPack) -->
-                                    @if (CurrentModule != null)
-                                    {
-                                        <div class="od-mod-stage-detail">
-                                            <button class="od-manage-btn" @onclick="() => showModuleStatModal = true">
-                                                View Details
-                                            </button>
-                                        </div>
-                                    }
-                                    else if (CurrentModule != null && currentModuleBattleEquip == null)
-                                    {
-                                        <p class="od-mod-no-stat">Loading module stat data...</p>
-                                    }
-
-                                    <!-- TODO: Module upgrade material requirements rendering (future task) -->
-                                    <!--
-                                <div class="od-mod-materials-section">
-                                    <span class="od-mod-mat-label">Upgrade Materials:</span>
-                                    <div class="od-mod-mat-list">
-                                         Render material items list here... 
-                                    </div>
-                                </div>
-                                -->
-
-                                    <div class="od-mod-footer-row">
-                                        <span class="od-mod-stage">STAGE <b>@(currentModuleBattleEquip?.Phases?.Count > 0 ? currentModuleBattleEquip.Phases.Count.ToString() : "-")</b></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- --- Trait & Attack Range Section --- -->
-                            <div class="od-trait-block">
-                                <span class="od-block-label">Trait</span>
-                                @if (!string.IsNullOrEmpty(op.Description))
-                                {
-                                    <p class="od-trait-desc">@CleanDescription(op.Description)</p>
-                                }
-                                else
-                                {
-                                    <!-- Range ID lookup reference: query against range table using the ID below -->
-                                    <!-- RangeId: @op.Phases?[Math.Min(elite, (op.Phases?.Count ?? 1) - 1)]?.RangeId -->
-                                    <!-- GitHub range_table EN: https://github.com/ArknightsAssets/ArknightsAssets2/tree/en/assets/dyn/gamedata/excel -->
-                                    <p class="od-trait-desc">—</p>
-                                }
-                            </div>
-
-                            <!-- Talent Section -->
-                            @if (op.Talents != null && op.Talents.Count > 0)
-                            {
-                                <div class="od-talent-block">
-                                    <span class="od-block-label">Talent</span>
-                                    @foreach (var talent in op.Talents)
-                                    {
-                                        var candidate = GetActiveTalentCandidate(talent);
-                                        if (candidate != null && (!string.IsNullOrEmpty(candidate.Name) || !string.IsNullOrEmpty(candidate.Description)))
-                                        {
-                                            <div class="od-talent-card-expanded">
-                                                <span class="od-talent-name-pill">@candidate.Name</span>
-                                                <p class="od-talent-desc-text">@CleanDescription(candidate.Description)</p>
-                                            </div>
-                                        }
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <!-- COLLAPSED MODULE VIEW (Image 1) -->
-                        <div class="od-drawer-body-collapsed" @onclick="ToggleModuleDrawer">
-                            <div class="od-module-summary-row">
-                                <div class="od-branch-summary">
-                                    <img class="od-subprof-icon-sm" src="/assets/icons/subprofessionicon/sub_@(op.SubProfessionId?.ToLower())_icon.png" />
-                                    <span class="od-branch-summary-name">@FormatSubProfession(op.SubProfessionId)</span>
-                                </div>
-
-                                <div class="od-module-summary-slots">
-                                    <div class="od-mod-mini-box @(selectedModuleIndex == 0 ? "active" : "")">ORIGINAL</div>
-                                    @if (modules != null && modules.Count > 0)
-                                    {
-                                        @for (int m = 0; m < modules.Count; m++)
-                                        {
-                                            var mIdx = m + 1;
-                                            var mod = modules[m];
-                                            <div class="od-mod-mini-box @(selectedModuleIndex == mIdx ? "active" : "")">
-                                                <A9Tool.Components.Common.LazyImage
-                                                    Src="@GetModuleTypeIconUrl(mod)"
-                                                    Category="modules"
-                                                    Alt="@mod.UniEquipName" />
-                                            </div>
-                                        }
-                                    }
-                                </div>
-
-                                <div class="od-module-summary-stage">
-                                    <span>STAGE <b>-</b></span>
-                                    <span class="od-manage-label">Manage +</span>
-                                </div>
-                            </div>
-
-                            <!-- Active Talent Pill (Image 1 bottom pill) -->
-                            @if (op.Talents != null && op.Talents.Count > 0)
-                            {
-                                var firstTalent = GetActiveTalentCandidate(op.Talents.FirstOrDefault());
-                                @if (firstTalent != null && !string.IsNullOrEmpty(firstTalent.Name))
-                                {
-                                    <div class="od-talent-pill-bar">
-                                        <span class="od-talent-pill-text">@firstTalent.Name</span>
-                                        <span class="od-pill-dropdown-arrow">▼</span>
-                                    </div>
-                                }
-                            }
-                        </div>
-                    }
-                </div>
-
+                }
             </aside>
         </div>
 
-        <!-- LEVEL SELECTOR MODAL / DIALOG -->
+
+                <!-- LEVEL SELECTOR MODAL / DIALOG -->
         @if (showLevelModal && op != null)
         {
             <div class="od-modal-backdrop" @onclick="() => showLevelModal = false">
@@ -1153,8 +952,13 @@ else
                         <!-- DESCRIPTION FULL-WIDTH ROW (below 2-col grid) -->
                         @if (!string.IsNullOrEmpty(CurrentModule.UniEquipDesc))
                         {
-                            <div class="od-mod-wiki-desc-row">
-                                <div class="od-mod-wiki-desc-label">Description</div>
+                            <div class="od-mod-wiki-desc-row @(isModuleDescExpanded ? "expanded" : "")">
+                                <div class="od-mod-wiki-desc-header">
+                                    <div class="od-mod-wiki-desc-label">📖 Module Lore & Equipment Description</div>
+                                    <button class="od-mod-desc-expand-btn" @onclick="() => isModuleDescExpanded = !isModuleDescExpanded">
+                                        @(isModuleDescExpanded ? "⮌ Collapse Description" : "⛶ Expand Full Lore")
+                                    </button>
+                                </div>
                                 <div class="od-mod-wiki-desc-text">@CleanDescription(CurrentModule.UniEquipDesc)</div>
                             </div>
                         }
@@ -1246,11 +1050,30 @@ else
                 </div>
             </div>
         }
+
+        <!-- OPERATOR RECORD STORY READER MODAL -->
+        <A9Tool.Components.Common.StoryReaderModal IsOpen="isStoryRecordOpen"
+                                                  Bundle="opStoryBundle"
+                                                  OnClose="() => isStoryRecordOpen = false" />
     </div>
 }
 
 @code {
     [Inject] ILogger<OperatorDetail>? Logger { get; set; }
+    [Inject] Core.Services.StoryService? StoryService { get; set; }
+
+    private bool isStoryRecordOpen = false;
+    private StoryScriptBundle? opStoryBundle;
+
+    private async Task OpenOperatorStoryRecord()
+    {
+        if (op != null && StoryService != null)
+        {
+            Logger?.LogInformation("[OperatorDetail] Opening Operator Record for: {Name} ({Id})", op.Name, Id);
+            opStoryBundle = await StoryService.GetStoryScriptAsync($"record_{Id}", $"obt/record/record_{Id}_1", $"{op.Name}'s Personnel Archive");
+            isStoryRecordOpen = true;
+        }
+    }
 
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public EventCallback OnBack { get; set; }
@@ -1274,8 +1097,8 @@ else
     private int selectedModuleIndex = 0;
     private BattleEquipPack? currentModuleBattleEquip;
 
-    private enum DrawerState { Collapsed, SkillExpanded, ModuleExpanded }
-    private DrawerState activeDrawer = DrawerState.Collapsed;
+    private bool isSkillExpanded = true;
+    private bool isModuleExpanded = true;
 
     private bool showLevelModal = false;
     private bool showModuleStatModal = false;
@@ -1286,6 +1109,40 @@ else
     {
         selectedSkillUpgradeIndex = selectedSkill;
         showSkillUpgradeModal = true;
+    }
+
+    private bool isModuleDescExpanded = false;
+
+    private async Task OpenModuleStatModal()
+    {
+        if (CurrentModule != null)
+        {
+            if (currentModuleMissions == null || currentModuleMissions.Count == 0)
+            {
+                try
+                {
+                    currentModuleMissions = await service.GetMissionsForModuleAsync(CurrentModule);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "[OpenModuleStatModal] Failed to load missions for '{ModId}'", CurrentModule.UniEquipId);
+                }
+            }
+
+            if (currentModuleBattleEquip == null && !string.IsNullOrEmpty(CurrentModule.UniEquipId))
+            {
+                try
+                {
+                    currentModuleBattleEquip = await service.GetBattleEquipAsync(CurrentModule.UniEquipId);
+                    await LoadModuleRangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "[OpenModuleStatModal] Failed to load battle equip for '{ModId}'", CurrentModule.UniEquipId);
+                }
+            }
+        }
+        showModuleStatModal = true;
     }
 
     private int costFromLevel = 1;
@@ -1317,14 +1174,14 @@ else
         }
         return [];
     }
-    private record struct SavedOperatorState(int Elite, int Level, int Trust, int ModuleIndex, int ModuleStage, DrawerState Drawer);
+    private record struct SavedOperatorState(int Elite, int Level, int Trust, int ModuleIndex, int ModuleStage, bool SkillExpanded, bool ModuleExpanded);
     private static readonly Dictionary<string, SavedOperatorState> _savedOperatorState = new();
 
     private void SaveState()
     {
         if (!string.IsNullOrEmpty(Id))
         {
-            _savedOperatorState[Id] = new SavedOperatorState(elite, currentLevel, selectedTrust, selectedModuleIndex, selectedModuleStage, activeDrawer);
+            _savedOperatorState[Id] = new SavedOperatorState(elite, currentLevel, selectedTrust, selectedModuleIndex, selectedModuleStage, isSkillExpanded, isModuleExpanded);
         }
     }
 
@@ -1355,15 +1212,59 @@ else
         showLevelModal = false;
     }
 
-    private void ToggleSkillDrawer()
+    private async Task ToggleSkillDrawer()
     {
-        activeDrawer = activeDrawer == DrawerState.SkillExpanded ? DrawerState.Collapsed : DrawerState.SkillExpanded;
+        bool isShortScreen = false;
+        try
+        {
+            isShortScreen = await JS.InvokeAsync<bool>("eval", "window.innerHeight < 820");
+        }
+        catch { }
+
+        if (isShortScreen)
+        {
+            if (isSkillExpanded)
+            {
+                isSkillExpanded = false;
+            }
+            else
+            {
+                isSkillExpanded = true;
+                isModuleExpanded = false;
+            }
+        }
+        else
+        {
+            isSkillExpanded = !isSkillExpanded;
+        }
         SaveState();
     }
 
-    private void ToggleModuleDrawer()
+    private async Task ToggleModuleDrawer()
     {
-        activeDrawer = activeDrawer == DrawerState.ModuleExpanded ? DrawerState.Collapsed : DrawerState.ModuleExpanded;
+        bool isShortScreen = false;
+        try
+        {
+            isShortScreen = await JS.InvokeAsync<bool>("eval", "window.innerHeight < 820");
+        }
+        catch { }
+
+        if (isShortScreen)
+        {
+            if (isModuleExpanded)
+            {
+                isModuleExpanded = false;
+            }
+            else
+            {
+                isModuleExpanded = true;
+                isSkillExpanded = false;
+            }
+        }
+        else
+        {
+            isModuleExpanded = !isModuleExpanded;
+        }
         SaveState();
     }
 
@@ -1526,9 +1427,13 @@ else
 
     private string GetModuleIconUrl(UniEquipData? module)
     {
-        if (module == null || string.IsNullOrEmpty(module.UniEquipIcon))
+        if (module == null || string.IsNullOrEmpty(module.UniEquipIcon) || module.UniEquipIcon.Equals("original", StringComparison.OrdinalIgnoreCase))
         {
-            return "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/equip/icon/ORIGINAL.png";
+            if (!string.IsNullOrEmpty(op?.SubProfessionId))
+            {
+                return GetSubProfessionIconUrl(op.SubProfessionId);
+            }
+            return GetClassIconUrl(op?.Profession);
         }
         Logger.LogInformation("Load module image {imageId}", module.UniEquipIcon.ToLower());
         return $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/en/assets/dyn/arts/ui/uniequipimg/{module.UniEquipIcon.ToLower()}.png";
@@ -1564,7 +1469,8 @@ else
             selectedModuleIndex = 0;
             currentModuleBattleEquip = null;
             currentModuleMissions = [];
-            activeDrawer = DrawerState.Collapsed;
+            isSkillExpanded = true;
+            isModuleExpanded = true;
 
             int savedModuleIdx = 0;
             int savedModuleStage = 0;
@@ -1578,12 +1484,15 @@ else
                 currentLevel = savedState.Level;
                 savedModuleIdx = savedState.ModuleIndex;
                 savedModuleStage = savedState.ModuleStage;
-                activeDrawer = savedState.Drawer;
+                isSkillExpanded = savedState.SkillExpanded;
+                isModuleExpanded = savedState.ModuleExpanded;
             }
             else
             {
                 elite = 0;
                 displayElite = 0;
+                isSkillExpanded = true;
+                isModuleExpanded = true;
                 if (op?.Phases != null && op.Phases.Count > 0)
                 {
                     currentLevel = op.Phases[elite].MaxLevel;
@@ -1719,6 +1628,17 @@ else
     private bool showLightbox = false;
     private int currentLevel;
     private int selectedTrust = 200;
+
+    private void ToggleTrustLevel()
+    {
+        selectedTrust = selectedTrust switch
+        {
+            0 => 100,
+            100 => 200,
+            _ => 0
+        };
+        SaveState();
+    }
 
     private void OnTrustChanged(ChangeEventArgs e)
     {
@@ -1926,7 +1846,7 @@ else
         _ => 0
     };
 
-    private string GetSkillImageUrl(string? id) => !string.IsNullOrEmpty(id) ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/skills/skill_icon_{id}.png" : "/assets/icons/characterdetail/sprite_profession.png";
+    private string GetSkillImageUrl(string? id) => !string.IsNullOrEmpty(id) ? $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/skills/skill_icon_{id}.png" : GetClassIconUrl(op?.Profession);
 
     private Stats? GetPhaseMaxStats()
     {
@@ -2058,7 +1978,30 @@ else
     };
 
     private string CleanDescription(string? desc)
-        => string.IsNullOrEmpty(desc) ? "" : System.Text.RegularExpressions.Regex.Replace(desc, @"<[^>]+>", "");
+    {
+        if (string.IsNullOrEmpty(desc)) return "";
+
+        // 1. Format percentage placeholders like {1.6:0%} -> 160% or {-0.2:0%} -> -20%
+        desc = System.Text.RegularExpressions.Regex.Replace(desc, @"\{(-?\d+(?:\.\d+)?):0(?:\.0+)?%\}", m =>
+        {
+            if (double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double val))
+            {
+                return $"{(val * 100):0.#}%";
+            }
+            return m.Value;
+        });
+
+        // 2. Format numeric template tokens {number:format}
+        desc = System.Text.RegularExpressions.Regex.Replace(desc, @"\{(-?\d+(?:\.\d+)?)(?::[^{}]+)?\}", m => m.Groups[1].Value);
+
+        // 3. Strip remaining raw placeholder braces like {-0.2%} or {atk_scale}
+        desc = System.Text.RegularExpressions.Regex.Replace(desc, @"\{[-+]?([a-zA-Z0-9_.]+)(?::[^{}]+)?\}", "$1");
+
+        // 4. Strip rich-text markup tags: <@ba.kw>...</>, <color=...>
+        desc = System.Text.RegularExpressions.Regex.Replace(desc, @"<[^>]+>", "");
+
+        return desc.Trim();
+    }
 
     private string FormatStageId(string? stageId)
     {
@@ -2066,16 +2009,23 @@ else
         return stageId.Replace("main_", "").Replace("sub_", "");
     }
 
-    private string GetClassIconUrl(string? p) => p switch
+    private string GetClassIconUrl(string? p) => (p?.ToUpperInvariant()) switch
     {
-        "PIONEER" => "/assets/icons/classes/class_vanguard.png",
-        "WARRIOR" => "/assets/icons/classes/class_guard.png",
-        "TANK" => "/assets/icons/classes/class_defender.png",
-        "SNIPER" => "/assets/icons/classes/class_sniper.png",
-        "CASTER" => "/assets/icons/classes/class_caster.png",
-        "MEDIC" => "/assets/icons/classes/class_medic.png",
-        "SUPPORT" => "/assets/icons/classes/class_supporter.png",
-        "SPECIAL" => "/assets/icons/classes/class_specialist.png",
-        _ => "/assets/icons/classes/class_caster.png"
+        "PIONEER" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_vanguard.png",
+        "WARRIOR" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_guard.png",
+        "TANK" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_defender.png",
+        "SNIPER" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_sniper.png",
+        "CASTER" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_caster.png",
+        "MEDIC" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_medic.png",
+        "SUPPORT" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_supporter.png",
+        "SPECIAL" => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_specialist.png",
+        _ => "https://raw.githubusercontent.com/Aceship/Arknight-Images/main/classes/class_caster.png"
     };
+
+    private string GetSubProfessionIconUrl(string? subProfId)
+    {
+        if (string.IsNullOrEmpty(subProfId)) return "";
+        var clean = subProfId.Trim().ToLowerInvariant();
+        return $"https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/ui/subprofessionicon/sub_{clean}_icon.png";
+    }
 }

@@ -89,7 +89,7 @@ A9Tools/
 | :---: | :---: | :--- | :---: | :---: | :---: |
 | [x] | A9-401 | **Cấu trúc hóa nguyên liệu nâng cấp:** Parse thông tin chi tiết nguyên liệu nâng cấp (độ hiếm, tên, icon) từ `item_table.json`, tạo component `<ItemBadge.razor />`. | 3h | 🛠️ Trung bình | `Done` |
 | [x] | A9-402 | **Bộ tính chi phí Leveling & Thăng cấp từng tướng (Modal):** Tích hợp `LevelingCostService`, popup tính LMD, EXP và danh sách nguyên liệu thăng cấp E0/E1/E2 trong Operator Detail. | 4h | 🛠️ Trung bình | `Done` |
-| [ ] | A9-403 | **Giao diện lập kế hoạch Planner tổng hợp (Multi-Operator Planner):** Lập danh sách nuôi nhiều tướng cùng lúc, tính tổng nguyên liệu cần farm và trừ kho nguyên liệu có sẵn. | 3h | 🛠️ Trung bình | `Backlog` |
+| [x] | A9-403 | **Giao diện lập kế hoạch Planner tổng hợp (Multi-Operator Planner):** Trang `/calculator` với bộ tính tài nguyên nâng cấp Operator và Spark Planner tích lũy Orundum/Originite Prime. | 3h | 🛠️ Trung bình | `Done` |
 
 #### 📋 Epic 4.5: Hồ sơ Nhân vật & Đa phương tiện - Character Biography & Media Hub (Thời gian ước lượng: ~10h)
 
@@ -109,9 +109,17 @@ A9Tools/
 
 | Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
 | :---: | :---: | :--- | :---: | :---: | :---: |
-| [ ] | A9-481 | **Cây Niên Biểu & Bản Đồ Dòng Thời Gian (Storyline Timeline Tree):** Phân chia cốt truyện theo các chương: Main Theme (Chương 0 - 14), Intermezzi (Darknights Memoir, Under Tides...), Side Story (Near Light, Il Siracusano...) và Story Collection. Thiết kế cây sơ đồ tương tác (Interactive Timeline Tree) theo chuẩn phong cách Terra. | 4h | 📖 Cốt truyện | `Backlog` |
-| [ ] | A9-482 | **Trích xuất & Xử lý Kịch bản Hội thoại:** Parse dữ liệu script đối thoại (tên nhân vật, avatar cảm xúc, đoạn thoại, câu dẫn người dẫn chuyện, phông nền Background CG và hiệu ứng âm thanh/nhạc nền BGM). | 3.5h | ⚙️ Kỹ thuật | `Backlog` |
-| [ ] | A9-483 | **Trình Đọc Visual Novel (Visual Novel Story Reader Component):** Giao diện đọc truyện toàn màn hình chuẩn phong cách game: portrait nhân vật đổi biểu cảm động, hộp thoại hội thoại, chế độ Auto-run, xem lại Lịch sử đối thoại (Log) và lựa chọn phân nhánh câu thoại (Branching Choices). | 4.5h | 🌟 Đỉnh cao | `Backlog` |
+| [x] | A9-481 | **Cây Niên Biểu & Bản Đồ Dòng Thời Gian (Storyline Timeline Tree):** Phân chia cốt truyện theo các chương: Main Theme (Chương 0 - 14), Intermezzi (Darknights Memoir, Under Tides...), Side Story (Near Light, Il Siracusano...) và Story Collection. Thiết kế cây sơ đồ tương tác (Interactive Timeline Tree) theo chuẩn phong cách Terra. | 4h | 📖 Cốt truyện | `Done` |
+| [x] | A9-482 | **Trích xuất & Xử lý Kịch bản Hội thoại:** Parse dữ liệu script đối thoại (tên nhân vật, avatar cảm xúc, đoạn thoại, câu dẫn người dẫn chuyện, phông nền Background CG và hiệu ứng âm thanh/nhạc nền BGM). | 3.5h | ⚙️ Kỹ thuật | `Done` |
+| [x] | A9-483 | **Trình Đọc Visual Novel & Light Novel (Dual-Mode Story Reader):** Giao diện đọc truyện toàn màn hình chuẩn phong cách game: đổi chế độ 1-click giữa VN và LN cuộn mượt, portrait đổi biểu cảm, nền CG, tự động stream BGM Monster Siren, hiệu ứng rung CameraShake, Auto-play, và xem lại Log lịch sử. | 4.5h | 🌟 Đỉnh cao | `Done` |
+
+#### 📋 Epic 4.9: Hệ thống Giao diện PRTS & Cài đặt - PRTS Terminal UI & Settings (Thời gian ước lượng: ~8h)
+
+| Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
+| :---: | :---: | :--- | :---: | :---: | :---: |
+| [x] | A9-491 | **App Shell & Header Điều Hướng PRTS Terminal:** Thiết kế component `<PrtsTerminalHeader />` sắc cạnh, vạch đo tọa độ, nút Back nhanh và thanh Breadcrumb phong cách hệ thống tác chiến Rhodes Island. | 2.5h | ⚡ Cao | `Done` |
+| [x] | A9-492 | **Màn hình Tải Dữ liệu Chống Đơ (Loading Overlay):** Xây dựng component `<PrtsLoadingOverlay />` với Rhombus Spinner vàng kim xoay 360°, thanh Laser quét % tiến độ và Faint Tactical Console Logger. | 2.5h | ⚡ Cao | `Done` |
+| [x] | A9-493 | **Trang Cài đặt Hệ thống & Bộ chọn Theme (`Settings.razor`):** Hỗ trợ đổi Theme Canon Light, Night Dark, Sui's Lotus (Hồng hoa sen), công tắc âm thanh ambient và công cụ xóa bộ nhớ đệm Cache. | 3h | ⚡ Cao | `Done` |
 
 ---
 
@@ -133,6 +141,23 @@ A9Tools/
 | [ ] | A9-601 | **Tối ưu dung lượng file Cache JSON:** Loại bỏ các trường dữ liệu thừa trong JSON trước khi lưu cache để giảm dung lượng file. | 2h | 🛠️ Trung bình | `ToDo` |
 | [ ] | A9-602 | **Tải lười dữ liệu (Lazy Loading):** Chỉ load danh sách tóm tắt lúc khởi động app, click vào Operator nào mới load chi tiết của Operator đó. | 2h | 🛠️ Trung bình | `ToDo` |
 | [ ] | A9-603 | **Chỉ mục tìm kiếm (Indexing):** Tăng tốc tìm kiếm bằng cách tạo chỉ mục sẵn thay vì duyệt qua danh sách thô trên giao diện. | 2h | 🛠️ Trung bình | `ToDo` |
+
+#### 📋 Epic 6.1: Rà soát & Sửa Lại Chức Năng AI Chưa Đạt (Code Audit & AI Refinement - Thời gian ước lượng: ~6h)
+
+| Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
+| :---: | :---: | :--- | :---: | :---: | :---: |
+| [ ] | A9-611 | **Xử lý triệt để Cảnh báo Build & Null Reference:** Khắc phục toàn bộ các cảnh báo biên dịch CS8602, CS8604, CS8601 (dereference of a possibly null reference) trong `OperatorDetail.razor` và `Calculator.razor` do AI sinh code tự động. | 2h | 🔥 Rất cao | `ToDo` |
+| [ ] | A9-612 | **Chuẩn hóa Logic Tính toán & State Binding:** Rà soát lại logic tính chỉ số động theo cấp độ, đồng bộ Potential/Elite/Module không để bị lệch công thức game; sửa các biến thừa chưa dùng (`showLightbox`...). | 2h | ⚡ Cao | `ToDo` |
+| [ ] | A9-613 | **Tối ưu UX & Responsive Layout:** Khắc phục tình trạng tràn chữ, co giật layout hoặc nút bấm quá nhỏ trên màn hình bé; kiểm tra luồng điều hướng giữa các trang không bị delay hay đơ giao diện. | 2h | ⚡ Cao | `ToDo` |
+
+#### 📋 Epic 6.2: Vẽ Lại CSS & Tích Hợp Asset Game Gốc (Game Asset & CSS Remaster - Thời gian ước lượng: ~8h)
+
+| Tích | Mã Task | Tên & Chi tiết Task | Thời gian | Độ quan trọng | Trạng thái |
+| :---: | :---: | :--- | :---: | :---: | :---: |
+| [ ] | A9-621 | **Thay thế Khung Thẻ & Đèn Độ Hiếm Bằng Asset Gốc:** Sử dụng trực tiếp sprite từ `ArknightsAssets2` (`sprite_rartylight_1..6.png`, `sprite_upperhub_1..6.png`, `sprite_star_1..6.png`) thay thế cho hiệu ứng border CSS tự vẽ thô sơ. | 2.5h | 🎨 Thẩm mỹ | `ToDo` |
+| [ ] | A9-622 | **Tích hợp Bộ Icon Chỉ Số & Nút Bấm In-game:** Áp dụng bộ sprite in-game chính thức cho các chỉ số ATK, DEF, HP, RES, Block, Cost (`panel_chara_one/icon_*.png`) và nút quay lại (`image_btn_back.png`). | 2h | 🎨 Thẩm mỹ | `ToDo` |
+| [ ] | A9-623 | **Watermark Mờ Phe Phái & Biểu Tượng Class Khổng Lồ:** Đưa Logo Tháp Rhodes Island (`logo_rhodes.png`), 44 Camp Logos (`camplogo/logo_*.png`) và Profession large icons (`icon_*_large.png`) in chìm mờ (`opacity: 0.05 - 0.08`) làm nền canvas trang chi tiết. | 2h | 🎨 Thẩm mỹ | `ToDo` |
+| [ ] | A9-624 | **Dọn dẹp & Tinh gọn `app.css`:** Tái cấu trúc file CSS, loại bỏ các rule thừa trùng lặp, áp dụng triệt để Design Tokens chuẩn `--prts-*`, tuân thủ nghiêm ngặt `border-radius: 0px` và font số cố định `tabular-nums`. | 1.5h | 🛠️ Trung bình | `ToDo` |
 
 ---
 
